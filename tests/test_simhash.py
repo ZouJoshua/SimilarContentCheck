@@ -9,7 +9,7 @@
 
 from unittest import main, TestCase
 
-from simhash_calculation.simhash import Simhash, SimhashIndex
+from fingerprints_calculation.simhash import Simhash, SimhashIndex
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 
