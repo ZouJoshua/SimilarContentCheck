@@ -9,22 +9,27 @@
 
 class HammingDistance(object):
 
-    def __init__(self, hash, hashbits):
-        self.hash = hash
+    def __init__(self, fingerprints, hashbits):
+        """Calculate Hamming distance
+         Args:
+             fingerprints: the fingerprints of an article
+             hashbits: the dimensions of fingerprints
+        """
+        self.fingerprints = fingerprints
         self.hashbits = hashbits
 
-    def distance(self, other_hash):
-        assert self.hashbits == other_hash.hashbits
-        x = (self.hash ^ other_hash.hash) & ((1 << self.hashbits) - 1)
+    def distance(self, another_fingerprints):
+        assert self.hashbits == another_fingerprints.hashbits
+        x = (self.fingerprints ^ another_fingerprints.fingerprints) & ((1 << self.hashbits) - 1)
         tot = 0
         while x:
             tot += 1
             x &= x - 1
         return tot
 
-    def similarity(self, other_hash):
-        a = float(self.hash)
-        b = float(other_hash)
+    def similarity(self, another_fingerprints):
+        a = float(self.fingerprints)
+        b = float(another_fingerprints)
         if a > b:
             return b / a
         return a / b

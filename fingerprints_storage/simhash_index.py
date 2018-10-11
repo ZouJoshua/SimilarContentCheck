@@ -13,15 +13,16 @@ from fingerprints_calculation.simhash import Simhash
 
 class SimhashIndex(object):
 
-    def __init__(self, objs, f=64, k=2):
+    def __init__(self, objs, hashbits=64, k=3):
         """
-        `objs` is a list of (obj_id, simhash)
-        obj_id is a string, simhash is an instance of Simhash
-        `f` is the same with the one for Simhash
-        `k` is the tolerance
+        Args:
+            objs: a list of (obj_id, simhash)
+                obj_id is a string, simhash is an instance of Simhash
+            hashbits: is the same with the one for Simhash
+            k: the tolerance
         """
         self.k = k
-        self.f = f
+        self.hashbits = hashbits
         count = len(objs)
         logging.info('Initializing %s data.', count)
         # 最关键的点,全放在内存中的
@@ -35,10 +36,12 @@ class SimhashIndex(object):
 
     def get_near_dups(self, simhash):
         """
-        `simhash` is an instance of Simhash
-        return a list of obj_id, which is in type of str
+        Args:
+            simhash: an instance of Simhash
+        Returns:
+            return a list of obj_id, which is in type of str
         """
-        assert simhash.f == self.f
+        assert simhash.fingerprints == self.fingerprints
 
         ans = set()
 
@@ -58,12 +61,12 @@ class SimhashIndex(object):
         return list(ans)
 
     def add(self, obj_id, simhash):
+        """Building an inverted index
+        Args:
+            obj_id: a string
+            simhash: an instance of Simhash
         """
-        `obj_id` is a string
-        `simhash` is an instance of Simhash
-        #构建倒排索引
-        """
-        assert simhash.f == self.f
+        assert simhash.hashbits == self.hashbits
 
         for key in self.get_keys(simhash):
             v = '%x,%s' % (simhash.value, obj_id)
@@ -88,17 +91,14 @@ class SimhashIndex(object):
     def offsets(self):
         """
         You may optimize this method according to <http://www.wwwconference.org/www2007/papers/paper215.pdf>
-        #理解没有到位，预先设置的k值，对于生成倒排的分块非常重要
         """
-        return [self.f // (self.k + 1) * i for i in range(self.k + 1)]
+        return [self.hashbits // (self.k + 1) * i for i in range(self.k + 1)]
 
     def get_keys(self, simhash):
-        """
-        @summary: 将hash值分块,构建倒排索引的键
-        #yield的作用非常值得学习
+        """Block the hash value and build the key for the inverted index
         """
         for i, offset in enumerate(self.offsets):
-            m = (i == len(self.offsets) - 1 and 2 ** (self.f - offset) - 1 or 2 ** (self.offsets[i + 1] - offset) - 1)
+            m = (i == len(self.offsets) - 1 and 2 ** (self.hashbits - offset) - 1 or 2 ** (self.offsets[i + 1] - offset) - 1)
             c = simhash.value >> offset & m
             yield '%x:%x' % (c, i)
 
@@ -110,13 +110,14 @@ class SimhashIndexWithMongo(object):
 
     def __init__(self, objs=(), f=64, k=2, hash_type='resume'):
         """
-        `objs` is a list of (obj_id, origin_text)
-         obj_id is a string, simhash is an instance of Simhash
-        `f` is the same with the one for Simhash
-        `k` is the tolerance 默认选择2的原因。 按照Charikar在论文中阐述的，64位simhash，
-                            海明距离在3以内的文本都可以认为是近重复文本。
-                            当然，具体数值需要结合具体业务以及经验值来确定。
-         `hash_type` is the hash type  of the text
+        Args:
+            objs: a list of (obj_id, origin_text)
+             obj_id is a string, simhash is an instance of Simhash
+            `f` is the same with the one for Simhash
+            `k` is the tolerance 默认选择2的原因。 按照Charikar在论文中阐述的，64位simhash，
+                                海明距离在3以内的文本都可以认为是近重复文本。
+                                当然，具体数值需要结合具体业务以及经验值来确定。
+             `hash_type` is the hash type  of the text
         #需要构建两个容器
         1.原始的文本数据以及hash后的hash值,和简单的更新时间等
         2.倒排索引的容器, 存储hash值进行离散后的  索引
