@@ -73,8 +73,8 @@ class Simhash(object):
         return int(hashlib.md5(x).hexdigest(), 16)
 
     def _hashfunc_builtin(self, x):
-        # Generate hash value with hash
-        hashcode = str(bin(hash(x)).replace('0b', '').replace('-', '').zfill(self.hashbits)[-self.hashbits:])
+        # Generate hash value with builtin function hash
+        hashcode = str(bin(hash(x))).replace('0b', '').replace('-', '').zfill(self.hashbits)[-self.hashbits:]
         return hashcode
 
     def _slide(self, content, width=4):
@@ -88,7 +88,8 @@ class Simhash(object):
 
     def build_by_text(self, content):
         features = self._tokenize(content)
-        features = {k: sum(1 for _ in g) for k, g in groupby(sorted(features))}
+        features = {k: sum(1 for _ in g) for k, g in groupby(features)}
+        # features = {k: sum(1 for _ in g) for k, g in groupby(sorted(features))}
         return self.build_by_features(features)
 
     def build_by_features(self, features):
