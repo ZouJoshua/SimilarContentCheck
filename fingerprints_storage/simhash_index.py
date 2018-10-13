@@ -9,8 +9,6 @@
 
 import logging
 import collections
-from fingerprints_calculation.simhash import Simhash
-from similarity_calculation.hamming_distance import HammingDistance
 
 class SimhashIndex(object):
 
@@ -78,3 +76,6 @@ class SimhashIndex(object):
 
     def bucket_size(self):
         return len(self.bucket)
+
+if __name__ == '__main__':
+    from fingerprints_calculation.simhash import Simhash
