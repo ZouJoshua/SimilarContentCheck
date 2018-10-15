@@ -131,5 +131,7 @@ if __name__ == '__main__':
     print bin(Simhash(str1).fingerprint)
     str2 = {'hello': 3, 'world': 4, 'fine': 5, 'news': 2, 'text': 2, 'test': 1}
     print Simhash(str2).fingerprint
+    print bin(Simhash(str2).fingerprint)
     str3 = 'hello,world! i\'m  working in China!'
     print Simhash(str3).fingerprint
+    print bin(Simhash(str3).fingerprint)

@@ -10,6 +10,7 @@
 import logging
 import collections
 from fingerprints_calculation.simhash import Simhash
+from utils.timer import Timer
 
 class SimhashIndexWithMongo(object):
 
