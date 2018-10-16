@@ -12,7 +12,7 @@ class HammingDistance(object):
     def __init__(self, simhash, hashbits=64):
         """Calculate Hamming distance
          Args:
-             fingerprint: the fingerprint of an article
+             simhash: an instance of Simhash
              hashbits: the dimensions of fingerprint
         """
         self.simhash = simhash
@@ -31,5 +31,5 @@ class HammingDistance(object):
         a = float(self.simhash.fingerprint)
         b = float(another_fingerprint.fingerprint)
         if a > b:
-            return b / a
-        return a / b
+            return '{}%'.format(b / a* 100, '0,02f')
+        return '{}%'.format(a / b * 100, '0.02f')

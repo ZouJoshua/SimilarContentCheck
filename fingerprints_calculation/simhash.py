@@ -117,21 +117,12 @@ class Simhash(object):
         for i in range(self.hashbits):
             if v[i] > 0:
                 _fingerprint |= masks[i]
-        # for i in range(self.hashbits):
-        #     if v[i] >= 0:
         #         _fingerprint += 1 << i
         self.fingerprint = _fingerprint
 
 if __name__ == '__main__':
-    str = {'hello': 3, 'world': 4, 'fine': 5, 'new': 2, 'text': 3}
-    print Simhash(str).fingerprint
-    print bin(Simhash(str).fingerprint)
-    str1 = {'hello': 5, 'world': 4, 'fine': 5, 'new': 2, 'text': 3}
+    str1 = {'hello': 3, 'world': 4, 'fine': 5, 'new': 2, 'text': 3}
     print Simhash(str1).fingerprint
-    print bin(Simhash(str1).fingerprint)
-    str2 = {'hello': 3, 'world': 4, 'fine': 5, 'news': 2, 'text': 2, 'test': 1}
+    str2 = int('2700903596475356647')
     print Simhash(str2).fingerprint
-    print bin(Simhash(str2).fingerprint)
-    str3 = 'hello,world! i\'m  working in China!'
-    print Simhash(str3).fingerprint
-    print bin(Simhash(str3).fingerprint)
+    print isinstance(Simhash(str2), Simhash)

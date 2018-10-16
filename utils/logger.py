@@ -22,9 +22,6 @@ import logging.handlers
 import sys
 from config import PROJECT_LOG_FILE
 
-__author__ = 'chenruotian'
-
-
 DEFAULT_LOGGING_LEVEL = logging.INFO
 
 

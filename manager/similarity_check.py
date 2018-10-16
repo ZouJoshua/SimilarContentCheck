@@ -17,12 +17,11 @@ from similarity_calculation.hamming_distance import HammingDistance
 
 class SimilarityCheck(object):
 
-    def __init__(self, bucket, hashbits=64, k=3):
-        self.bucket = bucket
+    def __init__(self, hashbits=64, k=3):
         self.hashbits = hashbits
         self.k = k
 
-    def get_near_dups(self, simhash):
+    def get_near_dups(self, simhash, bucket):
         """
         Args:
             simhash: an instance of Simhash
@@ -33,8 +32,8 @@ class SimilarityCheck(object):
 
         ans = set()
 
-        for key in SimhashIndex(self.bucket).get_keys(simhash):
-            dups = self.bucket.get(key, set())
+        for key in simhash.get_keys(simhash):
+            dups = bucket.get(key, set())
             logging.debug('key:%s', key)
             if len(dups) > 200:
                 logging.warning('Big bucket found. key:%s, len:%s', key, len(dups))
@@ -73,8 +72,8 @@ if __name__ == '__main__':
     sim1 = Simhash(str1)
     m3 = time.clock()
     print '计算一个simhash耗时{}'.format(m3-m2)
-    check = SimilarityCheck(bucket, k=3)
-    dups = check.get_near_dups(sim1)
+    check = SimilarityCheck(k=3)
+    dups = check.get_near_dups(sim1,bucket)
     print dups
     e = time.clock()
     print '查找simhash耗时{}'.format(e-m3)
