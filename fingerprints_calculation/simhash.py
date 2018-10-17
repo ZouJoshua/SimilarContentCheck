@@ -17,11 +17,12 @@ import numbers
 import collections
 from itertools import groupby
 
-if sys.version_info[0] >= 3:
+if sys.version_info[0] >= 3: # python3
     basestring = str
     unicode = str
     long = int
-else:
+else: # python2
+    import xrange
     range = xrange
 
 
@@ -122,7 +123,7 @@ class Simhash(object):
 
 if __name__ == '__main__':
     str1 = {'hello': 3, 'world': 4, 'fine': 5, 'new': 2, 'text': 3}
-    print Simhash(str1).fingerprint
+    print(bin(int(Simhash(str1).fingerprint)))
     str2 = int('2700903596475356647')
-    print Simhash(str2).fingerprint
-    print isinstance(Simhash(str2), Simhash)
+    print(bin(int(Simhash(str2).fingerprint)))
+    print(isinstance(Simhash(str2), Simhash))

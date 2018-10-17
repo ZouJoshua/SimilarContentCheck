@@ -9,6 +9,7 @@
 
 import logging
 import collections
+import datetime
 from fingerprints_calculation.simhash import Simhash
 from utils.timer import Timer
 
@@ -66,11 +67,11 @@ class SimhashIndexWithMongo(object):
                 if isinstance(value, (str, unicode)):
                     simhashcache.text = value
                 simhashcache.update_time = datetime.datetime.now()
-                simhashcache.hash_value = "%x" % simhash.fingerprints
+                simhashcache.hash_value = "%x" % simhash.fingerprint
                 simhashcache.save()
             with Timer(msg='add_invert_index'):
                 # 存储倒排索引
-                v = '%x,%s' % (simhash.fingerprints, obj_id)  # 转换成16进制,压缩,查询时候转回来,可以节省空间
+                v = '%x,%s' % (simhash.fingerprint, obj_id)  # 转换成16进制,压缩,查询时候转回来,可以节省空间
                 for key in self.get_keys(simhash):
                     with Timer(msg='add_invert_index-update_index-insert'):
                         try:
