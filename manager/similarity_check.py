@@ -7,12 +7,11 @@
 @Desc    : 
 """
 
-import logging
 import time
 
 from fingerprints_calculation.simhash import Simhash
 from fingerprints_storage.simhash_index import SimhashIndex
-from similarity_calculation.hamming_distance import HammingDistance
+from extract_features.extract_features_tfidf import get_keywords_tfidf
 
 
 class SimilarityCheck(object):
@@ -21,59 +20,33 @@ class SimilarityCheck(object):
         self.hashbits = hashbits
         self.k = k
 
-    def get_near_dups(self, simhash, bucket):
-        """
-        Args:
-            simhash: an instance of Simhash
-        Returns:
-            return a list of obj_id, which is in type of str
-        """
-        assert simhash.hashbits == self.hashbits
+    def test_check_similarity(self, text, text_id):
+        s1 = time.clock()
+        keywords = get_keywords_tfidf(text)
+        s2 = time.clock()
+        print("分词耗时**********{}s".format(s2-s1))
+        simhash = Simhash(keywords)
+        s3 = time.clock()
+        print("计算指纹耗时**********{}s".format(s3-s2))
+        objs = [(text_id, simhash)] * 1000000
+        s4 = time.clock()
+        index = SimhashIndex(objs, k=3)
+        print(index.bucket)
+        s5 = time.clock()
+        print("加载进内存耗时**********{}s".format(s5-s4))
+        s6 = time.clock()
+        dups_list = index.get_near_dups(simhash)
+        s7 = time.clock()
+        print("查找耗时**********{}s".format(s7-s6))
+        return dups_list
 
-        ans = set()
-
-        for key in simhash.get_keys(simhash):
-            dups = bucket.get(key, set())
-            logging.debug('key:%s', key)
-            if len(dups) > 200:
-                logging.warning('Big bucket found. key:%s, len:%s', key, len(dups))
-
-            for dup in dups:
-                sim2, obj_id = dup.split(',', 1)
-                sim2 = Simhash(long(sim2, 16), self.hashbits)
-
-                d = HammingDistance(simhash.fingerprint).distance(sim2.fingerprint)
-                if d <= self.k:
-                    ans.add(obj_id)
-        return list(ans)
 
 if __name__ == '__main__':
+    text ="Natural language processing (NLP) is a field of computer science, artificial intelligence and computational linguistics concerned with the interactions between computers and human (natural) languages, and, in particular, concerned with programming computers to fruitfully process large natural language corpora. Challenges in natural language processing frequently involve natural language understanding, natural language generation (frequently from formal, machine-readable logical forms), connecting language and machine perception, managing human-computer dialog systems, or some combination thereof." \
+    "The Georgetown experiment in 1954 involved fully automatic translation of more than sixty Russian sentences into English. The authors claimed that within three or five years, machine translation would be a solved problem.[2] However, real progress was much slower, and after the ALPAC report in 1966, which found that ten-year-long research had failed to fulfill the expectations, funding for machine translation was dramatically reduced. Little further research in machine translation was conducted until the late 1980s, when the first statistical machine translation systems were developed." \
+    "During the 1970s, many programmers began to write conceptual ontologies, which structured real-world information into computer-understandable data. Examples are MARGIE (Schank, 1975), SAM (Cullingford, 1978), PAM (Wilensky, 1978), TaleSpin (Meehan, 1976), QUALM (Lehnert, 1977), Politics (Carbonell, 1979), and Plot Units (Lehnert 1981). During this time, many chatterbots were written including PARRY, Racter, and Jabberwacky。"
     s = time.clock()
-    t = 0
-    objs = []
-    for i in range(100):
-        t += 1
-        _str = {'how': 1, 'are': 1, 'you': 1, 'i': 1, 'am': 1, 'fine': 1, 'blar': int('{}'.format(t))}
-        if t == 10:
-            t = 0
-        simhash = Simhash(_str)
-        objs.append((str(i), simhash))
-    with open('simhash.txt', 'w') as f:
-        for i in objs:
-            f.write('{},{}\n'.format(i[0], str(i[1].fingerprint)))
-    m1 = time.clock()
-    print '计算simhash耗时{}'.format(m1-s)
-    index = SimhashIndex(objs, k=3)
-    print index.bucket_size
-    bucket = index.bucket
-    print bucket
-    m2 = time.clock()
-    str1 = {'how': 1, 'are': 1, 'you': 1, 'i': 1, 'am': 1, 'fine': 1, 'blar': 11}
-    sim1 = Simhash(str1)
-    m3 = time.clock()
-    print '计算一个simhash耗时{}'.format(m3-m2)
-    check = SimilarityCheck(k=3)
-    dups = check.get_near_dups(sim1,bucket)
-    print dups
+    dups = SimilarityCheck().test_check_similarity(text=text, text_id='test1')
     e = time.clock()
-    print '查找simhash耗时{}'.format(e-m3)
+    print('全程查找耗时{}'.format(e - s))
+    print(dups)

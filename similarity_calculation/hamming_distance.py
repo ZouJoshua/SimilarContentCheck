@@ -31,5 +31,5 @@ class HammingDistance(object):
         a = float(self.simhash.fingerprint)
         b = float(another_fingerprint.fingerprint)
         if a > b:
-            return '{}%'.format(b / a* 100, '0,02f')
+            return '{}%'.format(b / a * 100, '0.02f')
         return '{}%'.format(a / b * 100, '0.02f')

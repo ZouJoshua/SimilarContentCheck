@@ -100,7 +100,7 @@ class SimhashIndex(object):
 
             for dup in dups:
                 sim2, obj_id = dup.split(',', 1)
-                sim2 = Simhash(long(sim2, 16), self.hashbits)
+                sim2 = Simhash(int(sim2, 16), self.hashbits)
 
                 _sim1 = HammingDistance(simhash)
                 d = _sim1.distance(sim2)
@@ -120,19 +120,19 @@ if __name__ == '__main__':
     objs = [(str(data.index(i)), Simhash(i)) for i in data]
     index = SimhashIndex(objs, k=3)
     s2 = time.clock()
-    print '生成指纹建立索引耗时{}'.format(s2 - s1)
-    print index.bucket_size
+    print('生成指纹建立索引耗时{}'.format(s2 - s1))
+    print(index.bucket_size)
 
     s3 = time.clock()
     sim1 = Simhash({'thanks': 2, 'are': 2, 'you': 3, 'fine': 4, 'blar': 10, 'ok': 3, 'reboot': 4})
-    print index.get_near_dups(sim1)
-    print len(index.get_near_dups(sim1))
+    print(index.get_near_dups(sim1))
+    print(len(index.get_near_dups(sim1)))
     s4 = time.clock()
-    print '新内容计算simhash及查询耗时{}'.format(s4 - s3)
+    print('新内容计算simhash及查询耗时{}'.format(s4 - s3))
 
     s5 = time.clock()
     index.add('test', sim1)
-    print index.get_near_dups(sim1)
-    print len(index.get_near_dups(sim1))
+    print(index.get_near_dups(sim1))
+    print(len(index.get_near_dups(sim1)))
     s6 = time.clock()
-    print '重新插入内存及查询耗时{}'.format(s6 - s5)
+    print('重新插入内存及查询耗时{}'.format(s6 - s5))

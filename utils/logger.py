@@ -20,33 +20,31 @@
 """
 import logging.handlers
 import sys
-from config import PROJECT_LOG_FILE
+from setting import PROJECT_LOG_FILE
 
 DEFAULT_LOGGING_LEVEL = logging.INFO
 
-
 class Logger(object):
-    """日志封装类
+    """Log wrapper class
     """
 
     def __init__(self, loggername,
                  loglevel2console=DEFAULT_LOGGING_LEVEL,
                  loglevel2file=DEFAULT_LOGGING_LEVEL,
                  log2console=True, log2file=False, logfile=None):
-        """Logger初始化方法
-        根据参数初始化不同的日志生成器：文件logger、控制台logger、文件和控制台logger
-        :param loggername: logger名称,传入相同的名称则获取到同一个logger实例
-        :param loglevel2console: 控制台日志级别,默认为logging.DEBUG,低于DEBUG的级别
-                (如：NOTSET)将会忽略
-        :param loglevel2file: 文件输出日志级别,默认为logging.INFO,低于INFO的级别
-                (如：DEBUG,NOTSET)将会忽略
-        :param log2console: 日志是否输出到控制台,sys.stderr
-        :param log2file: 日志是否输出到文件
-        :param logfile: 日志文件名
-        :return: logger
+        """Logger initialization
+        Args:
+            loggername: Logger name, the same name gets the same logger instance
+            loglevel2console: Console log level,default logging.DEBUG
+            loglevel2file: File log level,default logging.INFO
+            log2console: Output log to console,default True
+            log2file: Output log to file,default False
+            logfile: filename of logfile
+        Returns:
+            logger
         """
 
-        # 创建一个logger
+        # create logger
         self.logger = logging.getLogger(loggername)
         self.logger.setLevel(logging.DEBUG)
 
@@ -55,16 +53,16 @@ class Logger(object):
         formatter = logging.Formatter(formatstr, "%Y-%m-%d %H:%M:%S")
 
         if log2console:
-            # 创建一个handler，用于输出到控制台
+            # Create a handler for output to the console
             ch = logging.StreamHandler(sys.stderr)
             ch.setLevel(loglevel2console)
             ch.setFormatter(formatter)
             self.logger.addHandler(ch)
 
         if log2file:
-            # 创建一个handler，用于写入日志文件
+            # Create a handler for writing to the log file
             # fh = logging.FileHandler(logfile)
-            # 创建一个1天换一次log文件的handler,最多15个,滚动删除
+            # Create a handler for changing the log file once a day, up to 15, scroll delete
             fh = logging.handlers.TimedRotatingFileHandler(logfile, 'D', 5, 15)
             fh.setLevel(loglevel2file)
             fh.setFormatter(formatter)
@@ -84,16 +82,16 @@ if __name__ == "__main__":
     while True:
         clogger.debug('debug')
         clogger.info('info')
-        clogger.warn('warn')
+        clogger.warning('warn')
         flogger.debug('debug')
         flogger.info('info')
-        flogger.warn('warn')
+        flogger.warning('warn')
         fclogger.debug('debug')
         fclogger.info('info')
-        fclogger.warn('warn')
+        fclogger.warning('warn')
         try:
             c = 1 / 0
         except Exception as e:
             # 错误日志输出，exc_info=True:指名输出栈踪迹
-            fclogger.error('Error: %s' % e.message, exc_info=True)
+            fclogger.error('Error: %s' % e, exc_info=True)
         break

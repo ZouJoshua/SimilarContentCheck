@@ -127,3 +127,5 @@ if __name__ == '__main__':
     str2 = int('2700903596475356647')
     print(bin(int(Simhash(str2).fingerprint)))
     print(isinstance(Simhash(str2), Simhash))
+    import os
+    print(os.path.dirname(os.path.abspath(__file__)))

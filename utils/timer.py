@@ -22,9 +22,9 @@ class Timer(object):
      msg: 退出Timer时需要输出的消息，和计时结果一起输出，不为空时才真正输出
     """
 
-    def __init__(self, time_grain=u'ms',
+    def __init__(self, time_grain='ms',
                  verbose_in=True, verbose_out=True, verbose=True,
-                 msg_in=u'', msg_out=u'', msg=u'', logfile=None):
+                 msg_in='', msg_out='', msg='', logfile=None):
         self.time_grain = time_grain
         self.verbose_in = verbose_in
         self.verbose_out = verbose_out
@@ -67,7 +67,7 @@ if __name__ == '__main__':
                ):
         from time import sleep
         sleep(1)
-        print '1'
+        print('1')
         sleep(1)
         print(2)
 

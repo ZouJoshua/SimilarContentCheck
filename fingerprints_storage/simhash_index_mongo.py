@@ -80,7 +80,7 @@ class SimhashIndexWithMongo(object):
                                                                 )
                             invert_index.save()
                         except Exception, e:
-                            print '%s,%s,%s' % (e, key, v)
+                            print('%s,%s,%s' % (e, key, v))
                             pass
 
             return simhashcache
