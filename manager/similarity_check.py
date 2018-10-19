@@ -12,6 +12,7 @@ import time
 from fingerprints_calculation.simhash import Simhash
 from fingerprints_storage.simhash_index import SimhashIndex
 from extract_features.extract_features_tfidf import get_keywords_tfidf
+from extract_features.extract_features_participle import Participle
 
 
 class SimilarityCheck(object):
@@ -22,13 +23,14 @@ class SimilarityCheck(object):
 
     def test_check_similarity(self, text, text_id):
         s1 = time.clock()
-        keywords = get_keywords_tfidf(text)
+        # keywords = get_keywords_tfidf(text)
+        keywords = Participle().get_text_feature(text)
         s2 = time.clock()
         print("分词耗时**********{}s".format(s2-s1))
         simhash = Simhash(keywords)
         s3 = time.clock()
         print("计算指纹耗时**********{}s".format(s3-s2))
-        objs = [(text_id, simhash)] * 1000000
+        objs = [(text_id, simhash)] * 5000000
         s4 = time.clock()
         index = SimhashIndex(objs, k=3)
         print(index.bucket)

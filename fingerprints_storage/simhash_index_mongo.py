@@ -15,19 +15,14 @@ from utils.timer import Timer
 
 class SimhashIndexWithMongo(object):
 
-    def __init__(self, objs=(), hashbits=64, k=2, hash_type='resume'):
+    def __init__(self, objs=(), hashbits=64, k=2, hash_type='news'):
         """
         Args:
             objs: a list of (obj_id, origin_text)
                 obj_id is a string, simhash is an instance of Simhash
             hashbits: the same with the one for Simhash
-            k: the tolerance 默认选择2的原因。 按照Charikar在论文中阐述的，64位simhash，
-                                海明距离在3以内的文本都可以认为是近重复文本。
-                                当然，具体数值需要结合具体业务以及经验值来确定。
-             hash_type: the hash type  of the text
-        #需要构建两个容器
-        1.原始的文本数据以及hash后的hash值,和简单的更新时间等
-        2.倒排索引的容器, 存储hash值进行离散后的  索引
+            k: the tolerance
+            hash_type: the hash type  of the text
         """
         self.k = k
         self.hashbits = hashbits
@@ -40,18 +35,18 @@ class SimhashIndexWithMongo(object):
                 logging.info('%s/%s', i + 1, count)
             self.add(*q)
 
-    def insert(self, obj_id=None, value=None):
+    def _insert(self, obj_id=None, value=None):
         """Insert hash value
             data can  be text,{obj_id,text},  {obj_id,simhash}
         #TODO: The most time-consuming place to store and write databases
         """
         assert value != None
-        if isinstance(value, (str, unicode)):
+        if isinstance(value, str):
             simhash = Simhash(value=value, hashbits=self.hashbits)
         elif isinstance(value, Simhash):
             simhash = value
         else:
-            raise Exception('value not text or simhash')
+            raise Exception('Value not text or simhash')
         assert simhash.hashbits == self.hashbits
         # Cache raw text information
         if obj_id and simhash:
@@ -64,7 +59,7 @@ class SimhashIndexWithMongo(object):
                 else:
                     simhashcache = SimHashCache(obj_id=obj_id,
                                 hash_type=self.hash_type)
-                if isinstance(value, (str, unicode)):
+                if isinstance(value, str):
                     simhashcache.text = value
                 simhashcache.update_time = datetime.datetime.now()
                 simhashcache.hash_value = "%x" % simhash.fingerprint
@@ -79,7 +74,7 @@ class SimhashIndexWithMongo(object):
                                                             simhash_value_obj_id=v
                                                                 )
                             invert_index.save()
-                        except Exception, e:
+                        except Exception as e:
                             print('%s,%s,%s' % (e, key, v))
                             pass
 
@@ -97,8 +92,8 @@ class SimhashIndexWithMongo(object):
         """
         assert value != None
 
-        if isinstance(value, (str, unicode)):
-            simhash = Simhash(value=value, f=self.f)
+        if isinstance(value, str):
+            simhash = Simhash(value=value, hashbits=self.hashbits)
         elif isinstance(value, Simhash):
             simhash = value
         else:
@@ -125,24 +120,21 @@ class SimhashIndexWithMongo(object):
                         (exclude_obj_id_contain and exclude_obj_id_contain in simhash_cache):
                             continue
 
-                        sim2 = Simhash(long(sim2, 16), self.f)
+                        sim2 = Simhash(int(sim2, 16), self.f)
                         d = simhash.distance(sim2)
     #                     print '**' * 50
     #                     print "d:%d obj_id:%s key:%s " % (d, obj_id, key)
                         sim_hash_dict[obj_id].append(d)
                         if d < k:
                             ans.add(obj_id)
-                    except Exception, e:
+                    except Exception as e:
                         logging.warning('not exists %s' % (e))
         return list(ans)
 
     @staticmethod
     def query_simhash_cache(obj_id):
-        """
-        @summary: 通过obj_id,查询相似的simhash对象
-        """
+        """Find similar objects by obj_id"""
         simhash_caches = SimHashCache.objects.filter(obj_id__contains=obj_id)
-
         return simhash_caches
 
     @staticmethod
@@ -159,7 +151,7 @@ class SimhashIndexWithMongo(object):
         assert simhash.hashbits == self.hashbits
         try:
             simhashcache = SimHashCache.objects.get(obj_id=obj_id, hash_type=self.hash_type)
-        except Exception, e:
+        except Exception as e:
             logging.warning('not exists %s' % (e))
             return
 
@@ -169,18 +161,11 @@ class SimhashIndexWithMongo(object):
                 if simhashcache in simhash_invertindex.simhash_caches_index:
                     simhash_invertindex.simhash_caches_index.remove(simhashcache)
                     simhash_invertindex.save()
-            except Exception, e:
+            except Exception as e:
                 logging.warning('not exists %s' % (e))
 
     def add(self, obj_id, simhash):
-        """
-        `obj_id` is a string
-        `simhash` is an instance of Simhash
-        #
-        1.构建原始文本的hash的值后
-        2.构建倒排索引
-        """
-        return self.insert(obj_id=obj_id, value=simhash)
+        return self._insert(obj_id=obj_id, value=simhash)
 
     def add_and_find_dup(self, obj_id, value, k=16):
         """
@@ -201,25 +186,20 @@ class SimhashIndexWithMongo(object):
 
     def get_near_dups(self, simhash):
         """
-        `simhash` is an instance of Simhash
-        return a list of obj_id, which is in type of str
+        Args:
+            simhash: an instance of Simhash
+        Returns:
+            return a list of obj_id, which is in type of str
         """
         return self.find(simhash, self.k)
 
     @property
     def offsets(self):
-        """
-        You may optimize this method according to <http://www.wwwconference.org/www2007/papers/paper215.pdf>
-        """
         return [self.hashbits // (self.k + 1) * i for i in range(self.k + 1)]
 
     def get_keys(self, simhash):
-        """
-        @summary: 将hash值分块,构建倒排索引的键
-        #yield的作用非常值得学习
-        """
         for i, offset in enumerate(self.offsets):
-            m = (i == len(self.offsets) - 1 and 2 ** (self.f - offset) - 1 or 2 ** (self.offsets[i + 1] - offset) - 1)
+            m = (i == len(self.offsets) - 1 and 2 ** (self.hashbits - offset) - 1 or 2 ** (self.offsets[i + 1] - offset) - 1)
             c = simhash.value >> offset & m
             yield '%x:%x' % (c, i)
 

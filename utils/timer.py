@@ -12,14 +12,15 @@ from utils.logger import clogger, Logger
 
 
 class Timer(object):
-    """时间计算器
-     time_grain: 时间粒度 - 秒s/毫秒ms， 默认毫秒ms
-     verbose_in: 进入Timer时是否输出msg_in
-     verbose_out: 退出Timer时是否输出msg_out
-     verbose: 退出Timer时是否输出msg
-     msg_in: 进入Timer时需要输出的消息，不为空时才真正输出
-     msg_out: 退出Timer时需要输出的消息，不为空时才真正输出
-     msg: 退出Timer时需要输出的消息，和计时结果一起输出，不为空时才真正输出
+    """Time calculator
+    Args:
+        time_grain: Time granularity(s/ms),default ms
+        verbose_in: Whether to output `msg_in` when creating Timer
+        verbose_out: Whether to output `msg_out` when exiting Timer
+        verbose: Whether to output `msg` when exiting timer
+        msg_in: The message that needs to be output when creating the Timer. It is output when it is not empty.
+        msg_out: The message that needs to be output when exiting the Timer. It is output when it is not empty.
+        msg: The message that needs to be output when exiting Timer is output together with the timing result. If it is not empty, it will be output.
     """
 
     def __init__(self, time_grain='ms',
@@ -61,9 +62,9 @@ class Timer(object):
                 self.logger.info('elapsed: %s' % tm_str)
 
 if __name__ == '__main__':
-    with Timer(msg_in=u'start test ...',
-               msg_out=u'complete test',
-               msg=u'test'
+    with Timer(msg_in='start test ...',
+               msg_out='complete test',
+               msg='test'
                ):
         from time import sleep
         sleep(1)

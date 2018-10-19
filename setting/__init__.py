@@ -12,7 +12,7 @@ from os.path import dirname
 
 
 mongodb_config = {
-    'name': 'recruiting',
+    'name': 'news',
     'username': '',
     'host': '127.0.0.1',
     'password': '',

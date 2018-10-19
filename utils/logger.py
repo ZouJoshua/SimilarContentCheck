@@ -49,7 +49,7 @@ class Logger(object):
         self.logger.setLevel(logging.DEBUG)
 
         # set formater
-        formatstr = '%(asctime)s:%(levelname)s:%(filename)s:%(lineno)d :%(funcName)s(%(threadName)s): %(message)s'
+        formatstr = '[%(asctime)s] [%(levelname)s] [%(filename)s-%(lineno)d] [PID:%(process)d-TID:%(thread)d] [%(message)s]'
         formatter = logging.Formatter(formatstr, "%Y-%m-%d %H:%M:%S")
 
         if log2console:
@@ -71,11 +71,11 @@ class Logger(object):
     def get_logger(self):
         return self.logger
 
-# 文件logger
+# file logger
 flogger = Logger('flogger', log2console=False, log2file=True, logfile=PROJECT_LOG_FILE).get_logger()
-# 控制台logger
+# console logger
 clogger = Logger('clogger', log2console=True, log2file=False).get_logger()
-# 文件和控制台logger
+# file and console logger
 fclogger = Logger('fclogger', log2console=True, log2file=True, logfile=PROJECT_LOG_FILE).get_logger()
 
 if __name__ == "__main__":
