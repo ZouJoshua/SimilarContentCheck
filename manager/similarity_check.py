@@ -14,6 +14,7 @@ from fingerprints_storage.simhash_index import SimhashIndex
 from extract_features.extract_features_tfidf import get_keywords_tfidf
 from extract_features.extract_features_participle import Participle
 from fingerprints_storage.simhash_index_mongo import SimhashIndexWithMongo
+from fingerprints_storage.simhash_index_redis import SimhashIndexWithRedis
 
 class SimilarityCheck(object):
 
@@ -33,13 +34,14 @@ class SimilarityCheck(object):
         objs = [(text_id, simhash)] * 1000
         s4 = time.clock()
         index = SimhashIndexWithMongo(objs, k=3)
+        index = SimhashIndexWithRedis(objs, k=3)
         s5 = time.clock()
         print("写入数据库耗时**********{}s".format(s5-s4))
         s6 = time.clock()
-        dups_list = index.get_near_dups(simhash)
+        # dups_list = index.get_near_dups(simhash)
         s7 = time.clock()
         print("查找耗时**********{}s".format(s7-s6))
-        return dups_list
+        # return dups_list
 
 
 if __name__ == '__main__':

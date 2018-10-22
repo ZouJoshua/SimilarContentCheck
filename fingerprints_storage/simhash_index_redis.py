@@ -11,10 +11,12 @@ import logging
 import collections
 import datetime
 import time
+from utils.timer import Timer
 
 from fingerprints_calculation.simhash import Simhash
 from similarity_calculation.hamming_distance import HammingDistance
 from db.simhash_redis import SimhashRedis
+from db.simhash_mongo import SimHashCache
 
 class SimhashIndexWithRedis(object):
 
@@ -74,7 +76,7 @@ class SimhashIndexWithRedis(object):
                 for key in self.get_keys(simhash):
                     with Timer(msg='add_invert_index-update_index-insert'):
                         try:
-                            self.redis.add(key=key, mapping=v)
+                            self.redis.add(name=key, value=v)
                         except Exception as e:
                             print('%s,%s,%s' % (e, key, v))
                             pass
@@ -95,7 +97,7 @@ class SimhashIndexWithRedis(object):
         ans = set()
         for key in self.get_keys(simhash):
             with Timer(msg='==query: {}'.format(key)):
-                simhash_invertindex = SimhashInvertedIndex.objects.filter(key=key)
+                simhash_invertindex = self.redis.find(key=key)
                 if simhash_invertindex:
                     simhash_caches_index = [sim_index.simhash_value_obj_id
                                         for sim_index in simhash_invertindex]
@@ -150,7 +152,7 @@ class SimhashIndexWithRedis(object):
 
         for key in self.get_keys(simhash):
             try:
-                simhash_invertindex = SimhashInvertedIndex.objects.get(key=key)
+                simhash_invertindex = self.redis.delete(name=key)
                 if simhashcache in simhash_invertindex.simhash_caches_index:
                     simhash_invertindex.simhash_caches_index.remove(simhashcache)
                     simhash_invertindex.save()

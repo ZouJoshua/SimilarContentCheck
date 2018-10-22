@@ -23,29 +23,26 @@ class SimhashRedis(object):
         try:
             pool = ConnectionPool(host=self._host, port=self._port, db=self._db, password=self._password)
             r = StrictRedis(connection_pool=pool)
-            return r
         except Exception as e:
-            print(e)
+            raise e
+        return r
 
-    def add(self, key, value):
-        return self.redis.lpushx(key, value)
+    def add(self, name, value):
+        return self.redis.sadd(name, value)
 
-    def delete(self,name, keys):
-        return self.redis.hdel(name, *keys)
+    def delete(self,name, value):
+        return self.redis.srem(name, value)
 
     def status(self):
         return self.redis.dbsize()
 
     def get(self, key):
-        return self.redis.get(key)
+        pass
 
 if __name__ == '__main__':
     redis = SimhashRedis()
-    # print(redis.add('test2', 3))
-    print(redis.status())
-    print(redis.get('test2'))
-    id = {"simhash_obj_id": "b67ed5bc9bde424e,test1"}
-    test = {"keys": ["424e:0", "9bde:1", "d5bc:2", "b67e:3"]}
+    id = {"simhash_obj_id": "b67ed5bc9bde424e,test4"}
+    test = {"keys": ["424e:0", "9bde:1", "d5bc:2", "a74c:3"]}
     for key in test.get('keys'):
         redis.add(key,id.get('simhash_obj_id'))
-        print(redis.get(key))
+        # print(redis.get(key))
