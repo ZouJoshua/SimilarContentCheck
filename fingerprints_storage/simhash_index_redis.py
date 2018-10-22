@@ -3,20 +3,20 @@
 """
 @Author  : Joshua
 @Time    : 2018/10/12 15:38
-@File    : simhash_index_mongo.py
+@File    : simhash_index_redis.py
 @Desc    : 
 """
 
 import logging
 import collections
 import datetime
-from utils.timer import Timer
+import time
 
 from fingerprints_calculation.simhash import Simhash
 from similarity_calculation.hamming_distance import HammingDistance
-from db.simhash_mongo import SimHashCache, SimhashInvertedIndex
+from db.simhash_redis import SimhashRedis
 
-class SimhashIndexWithMongo(object):
+class SimhashIndexWithRedis(object):
 
     def __init__(self, objs=(), hashbits=64, k=3, hash_type='news'):
         """
@@ -30,8 +30,9 @@ class SimhashIndexWithMongo(object):
         self.k = k
         self.hashbits = hashbits
         self.hash_type = hash_type
+        self.redis = SimhashRedis()
         count = len(objs)
-        logging.info('Initializing %s data.', count)
+        logging.info('Initializing {} data.'.format(count))
 
         for i, q in enumerate(objs):
             if i % 10000 == 0 or i == count - 1:
@@ -39,7 +40,7 @@ class SimhashIndexWithMongo(object):
             self.add(*q)
 
     def _insert(self, obj_id=None, value=None):
-        """Insert hash value
+        """Insert hash value into cache and mongodb
             data can  be text,{obj_id,text},  {obj_id,simhash}
         #TODO: The most time-consuming place to store and write databases
         """
@@ -67,16 +68,13 @@ class SimhashIndexWithMongo(object):
                 simhashcache.update_time = datetime.datetime.now()
                 simhashcache.hash_value = "%x" % simhash.fingerprint
                 simhashcache.save()
-            with Timer(msg='add_invert_index'):
+            with Timer(msg='add_invert_index_redis'):
                 # cache invert index
                 v = '%x,%s' % (simhash.fingerprint, obj_id)  # Convert to hexadecimal for compressed storage, which saves space and converts back when querying
                 for key in self.get_keys(simhash):
                     with Timer(msg='add_invert_index-update_index-insert'):
                         try:
-                            invert_index = SimhashInvertedIndex(key=key, hash_type=self.hash_type,
-                                                            simhash_value_obj_id=v
-                                                                )
-                            invert_index.save()
+                            self.redis.add(key=key, mapping=v)
                         except Exception as e:
                             print('%s,%s,%s' % (e, key, v))
                             pass
@@ -183,7 +181,7 @@ class SimhashIndexWithMongo(object):
             else:
                 m = 2 ** (self.offsets[i + 1] - offset) - 1
             c = simhash.fingerprint >> offset & m
-            yield '%x_%x' % (c, i)
+            yield '%x:%x' % (c, i)
 
     def bucket_size(self):
         return SimhashInvertedIndex.objects.count()

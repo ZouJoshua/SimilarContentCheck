@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 @Author  : Joshua
-@Time    : 2018/10/12 17:16
-@File    : similarity_check.py
+@Time    : 2018/10/22 11:42
+@File    : test_similarity_check.py
 @Desc    : 
 """
 
@@ -21,7 +21,7 @@ class SimilarityCheck(object):
         self.hashbits = hashbits
         self.k = k
 
-    def check_similarity(self, text, text_id):
+    def test_check_similarity(self, text, text_id):
         s1 = time.clock()
         # keywords = get_keywords_tfidf(text)
         keywords = Participle().get_text_feature(text)
@@ -30,11 +30,12 @@ class SimilarityCheck(object):
         simhash = Simhash(keywords)
         s3 = time.clock()
         print("计算指纹耗时**********{}s".format(s3-s2))
-        objs = [(text_id, simhash)] * 1000
+        objs = [(text_id, simhash)] * 5000000
         s4 = time.clock()
-        index = SimhashIndexWithMongo(objs, k=3)
+        index = SimhashIndex(objs, k=3)
+        print(index.bucket)
         s5 = time.clock()
-        print("写入数据库耗时**********{}s".format(s5-s4))
+        print("加载进内存耗时**********{}s".format(s5-s4))
         s6 = time.clock()
         dups_list = index.get_near_dups(simhash)
         s7 = time.clock()
@@ -47,7 +48,7 @@ if __name__ == '__main__':
     "The Georgetown experiment in 1954 involved fully automatic translation of more than sixty Russian sentences into English. The authors claimed that within three or five years, machine translation would be a solved problem.[2] However, real progress was much slower, and after the ALPAC report in 1966, which found that ten-year-long research had failed to fulfill the expectations, funding for machine translation was dramatically reduced. Little further research in machine translation was conducted until the late 1980s, when the first statistical machine translation systems were developed." \
     "During the 1970s, many programmers began to write conceptual ontologies, which structured real-world information into computer-understandable data. Examples are MARGIE (Schank, 1975), SAM (Cullingford, 1978), PAM (Wilensky, 1978), TaleSpin (Meehan, 1976), QUALM (Lehnert, 1977), Politics (Carbonell, 1979), and Plot Units (Lehnert 1981). During this time, many chatterbots were written including PARRY, Racter, and Jabberwacky。"
     s = time.clock()
-    dups = SimilarityCheck().check_similarity(text=text, text_id='test1')
+    dups = SimilarityCheck().test_check_similarity(text=text, text_id='test1')
     e = time.clock()
     print('全程查找耗时{}'.format(e - s))
     print(dups)

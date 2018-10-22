@@ -17,7 +17,7 @@ from mongoengine import register_connection
 from setting import simhash_mongodb_config
 register_connection(**simhash_mongodb_config)
 
-print('simhash db\n', json.dumps(simhash_mongodb_config, indent=4))
+# print('simhash db\n', json.dumps(simhash_mongodb_config, indent=4))
 
 
 class SimHashCache(Document):
@@ -33,11 +33,11 @@ class SimHashCache(Document):
     meta = {
         'db_alias': 'simhash',
         'strict': False,
-        "collection": "simhash-1",
+        "collection": "simhash_text",
         "indexes": [
-            "-update_time",
-            "-add_time",
             "obj_id",
+            "-add_time",
+            "-update_time",
             "hash_type",
             "-dup_count",
             {
@@ -50,7 +50,7 @@ class SimHashCache(Document):
 
     def __str__(self):
 
-        return 'obj_id:%s' % (self.obj_id)
+        return 'obj_id:{}'.format(self.obj_id)
 
     def get_all_dup_ids(self):
 
@@ -59,17 +59,17 @@ class SimHashCache(Document):
 
 class SimhashInvertedIndex(Document):
     """
-    simhash倒排索引
+    simhash inverted index
     """
     key = StringField()
-#     simhash_caches_index = ListField(StringField())  # 倒排相似hash索引 hash_value,obj_id
+    # simhash_caches_index = ListField(StringField())  # 倒排相似hash索引 hash_value,obj_id
     simhash_value_obj_id = StringField()  # hash索引 hash_value,obj_id
-    hash_type = StringField()  # 对应不同类型的hash来源,如:简历,职位描述
+    hash_type = StringField()
     meta = {
         'db_alias': 'simhash',
         'strict': False,
-#             'index_background': True ,
-        "collection": "simhash_invert_index-2",
+        # 'index_background': True ,
+        "collection": "simhash_invert_index",
         "indexes": [
             "key",
             "simhash_value_obj_id",
@@ -83,15 +83,5 @@ class SimhashInvertedIndex(Document):
 
 
 if __name__ == '__main__':
-    from bson import ObjectId
-    simhashcache3 = SimHashCache.objects.get(id=ObjectId("55ccdb40452f7159b9112543"))
-    simhashcache3 = SimHashCache.objects.get(id=ObjectId("55cccc20452f714a0fbd8402"))
-    simhashcache3 = SimHashCache.objects.get(id=ObjectId("55cce99a452f71684791a8b0"))
-    simhashcache3 = SimHashCache.objects.get(id=ObjectId("55cd2965452f716b1ffe828d"))
-    simhashcache3.add_dup_simhash_caches(simhashcache3.dup_simhashcache)
-    simhashcache = SimHashCache(obj_id='123')
-    simhashcache2 = SimHashCache(obj_id='456')
-    simhashcache.save()
-    simhashcache2.save()
-    simhashcache.dup_simhashcache = [simhashcache2]
-    simhashcache.save()
+    simhashcache = SimHashCache().get_all_dup_ids()
+    print(simhashcache)

@@ -10,7 +10,7 @@
 import os
 from os.path import dirname
 
-
+# MongoDB
 mongodb_config = {
     'name': 'news',
     'username': '',
@@ -27,6 +27,10 @@ simhash_mongodb_config = {
     'port': 27017,
     'alias': 'simhash',
 }
+# Reids
+REDIS_HOST = '127.0.0.1'
+REDIS_PORT = 6379
+REDIS_URL = None
 
 PROJECT_ROOT = dirname(dirname(dirname(os.path.abspath(__file__)))).replace('\\', '/')
 LOG_PATH = PROJECT_ROOT + '/logs/'

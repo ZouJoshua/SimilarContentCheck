@@ -8,6 +8,7 @@
 """
 
 import string
+import re
 from itertools import groupby
 
 try:
@@ -18,8 +19,8 @@ except AttributeError:
 
 class Participle(object):
 
-    def __init__(self):
-        pass
+    def __init__(self, reg=r'[\w]+'):
+        self.reg = reg
 
     def get_text_feature(self, text):
         new_text = self._text_no_punctuation(text)
@@ -29,10 +30,13 @@ class Participle(object):
 
     def _text_no_punctuation(self, text):
         text = text.lower()
-        punctuation_cn = """！？｡＂＃＄％＆＇（）＊＋－／：；＜＝＞＠［＼］＾＿｀｛｜｝～｟｠｢｣､、〃》「」『』【】〔〕〖〗〘〙〚〛〜〝〞〟〰〾〿–—‘’‛“”„‟…‧﹏"""
-        punctuation = string.punctuation + punctuation_cn
-        remove_punctuation_map = dict((ord(char), None) for char in punctuation)
-        _text = text.translate(remove_punctuation_map)
+        if self.reg:
+            _text = ''.join(re.findall(self.reg, text))
+        else:
+            punctuation_cn = """！？｡＂＃＄％＆＇（）＊＋－／：；＜＝＞＠［＼］＾＿｀｛｜｝～｟｠｢｣､、〃》「」『』【】〔〕〖〗〘〙〚〛〜〝〞〟〰〾〿–—‘’‛“”„‟…‧﹏"""
+            punctuation = string.punctuation + punctuation_cn
+            remove_punctuation_map = dict((ord(char), None) for char in punctuation)
+            _text = text.translate(remove_punctuation_map)
         return _text
 
     def _slice(self, content, width=4):
