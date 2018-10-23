@@ -33,6 +33,10 @@ class SimhashIndexWithRedis(object):
         self.hashbits = hashbits
         self.hash_type = hash_type
         self.redis = SimhashRedis()
+
+        if not objs:
+            self.redis.flushall()
+
         count = len(objs)
         logging.info('Initializing {} data.'.format(count))
 
@@ -107,6 +111,7 @@ class SimhashIndexWithRedis(object):
             for simhash_cache in simhash_list:
                 if isinstance(simhash_cache, bytes):
                     simhash_cache = simhash_cache.decode()
+                # print(simhash_cache)
                 try:
                     sim2, obj_id = simhash_cache.split(',', 1)
                     sim2 = Simhash(int(sim2, 16), self.hashbits)
