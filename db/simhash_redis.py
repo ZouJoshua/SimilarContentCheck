@@ -30,19 +30,28 @@ class SimhashRedis(object):
     def add(self, name, value):
         return self.redis.sadd(name, value)
 
-    def delete(self,name, value):
+    def get(self, name):
+        return self.redis.smembers(name)
+
+    def delete(self, name, value):
         return self.redis.srem(name, value)
 
+    @property
     def status(self):
         return self.redis.dbsize()
 
-    def get(self, key):
-        pass
-
 if __name__ == '__main__':
     redis = SimhashRedis()
-    id = {"simhash_obj_id": "b67ed5bc9bde424e,test4"}
+    id = {"simhash_obj_id": "b67ed5bc9bde424e_test4"}
     test = {"keys": ["424e:0", "9bde:1", "d5bc:2", "a74c:3"]}
     for key in test.get('keys'):
-        redis.add(key,id.get('simhash_obj_id'))
-        # print(redis.get(key))
+        redis.add(key, id.get('simhash_obj_id'))
+
+    for i in test.get('keys'):
+        lst = redis.get(i)
+
+        for i in lst:
+            if isinstance(i, bytes):
+                i = i.decode()
+            sim2, obj_id = i.split('_', 1)
+            print(sim2)

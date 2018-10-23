@@ -46,7 +46,7 @@ class SimhashIndex(object):
         assert simhash.hashbits == self.hashbits
 
         for key in self.get_keys(simhash):
-            v = '%x,%s' % (simhash.fingerprint, obj_id)
+            v = '{:x},{}'.format(simhash.fingerprint, obj_id)
             self.bucket.setdefault(key, set())
             self.bucket[key].add(v)
 
@@ -54,7 +54,7 @@ class SimhashIndex(object):
         assert simhash.hashbits == self.hashbits
 
         for key in self.get_keys(simhash):
-            v = '%x,%s' % (simhash.fingerprint, obj_id)
+            v = '{:x},{}'.format(simhash.fingerprint, obj_id)
 
             if v in self.bucket.get(key, set()):
                 self.bucket[key].remove(v)
@@ -75,7 +75,7 @@ class SimhashIndex(object):
             else:
                 m = 2 ** (self.offsets[i + 1] - offset) - 1
             c = simhash.fingerprint >> offset & m
-            yield '%x:%x' % (c, i)
+            yield '{:x}:{:x}'.format(c, i)
 
     @property
     def bucket_size(self):
@@ -94,7 +94,7 @@ class SimhashIndex(object):
 
         for key in self.get_keys(simhash):
             dups = self.bucket.get(key, set())
-            logging.debug('key:%s', key)
+            logging.debug('key:{}'.format(key))
             if len(dups) > 200:
                 logging.warning('Big bucket found. key:%s, len:%s', key, len(dups))
 

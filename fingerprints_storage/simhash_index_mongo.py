@@ -147,7 +147,7 @@ class SimhashIndexWithMongo(object):
         try:
             simhashcache = SimHashCache.objects.get(obj_id=obj_id, hash_type=self.hash_type)
         except Exception as e:
-            logging.warning('not exists {}'.format(e))
+            logging.warning('Not exists {}'.format(e))
             return
 
         for key in self.get_keys(simhash):
@@ -157,7 +157,7 @@ class SimhashIndexWithMongo(object):
                     simhash_invertindex.simhash_caches_index.remove(simhashcache)
                     simhash_invertindex.save()
             except Exception as e:
-                logging.warning('not exists {}'.format(e))
+                logging.warning('Not exists {}'.format(e))
 
     def add(self, obj_id, simhash):
         return self._insert(obj_id=obj_id, value=simhash)
@@ -183,7 +183,7 @@ class SimhashIndexWithMongo(object):
             else:
                 m = 2 ** (self.offsets[i + 1] - offset) - 1
             c = simhash.fingerprint >> offset & m
-            yield '%x_%x' % (c, i)
+            yield '{0:x}:{0:x}'.format(c, i)
 
     def bucket_size(self):
         return SimhashInvertedIndex.objects.count()

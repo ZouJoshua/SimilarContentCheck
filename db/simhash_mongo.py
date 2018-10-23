@@ -25,21 +25,20 @@ class SimHashCache(Document):
     hash_value = StringField()  # OverflowError: MongoDB can only handle up to 8-byte ints
     text = StringField()
     hash_type = StringField()
-    dup_obj_ids = ListField(StringField())
-    dup_count = IntField(default=0)
     add_time = DateTimeField(default=datetime.datetime.now())
     update_time = DateTimeField(default=datetime.datetime.now())
+    last_days = IntField(default=0)
 
     meta = {
         'db_alias': 'simhash',
         'strict': False,
-        "collection": "simhash_text",
+        "collection": "simhash_fingerprint",
         "indexes": [
             "obj_id",
             "-add_time",
             "-update_time",
             "hash_type",
-            "-dup_count",
+            "last_days",
             {
                 "fields": ["obj_id", "hash_type"],
                 "unique":True,
@@ -52,18 +51,13 @@ class SimHashCache(Document):
 
         return 'obj_id:{}'.format(self.obj_id)
 
-    def get_all_dup_ids(self):
-
-        return [dup for dup in self.dup_obj_ids]
-
-
 class SimhashInvertedIndex(Document):
     """
     simhash inverted index
     """
     key = StringField()
-    # simhash_caches_index = ListField(StringField())  # 倒排相似hash索引 hash_value,obj_id
-    simhash_value_obj_id = StringField()  # hash索引 hash_value,obj_id
+    # simhash_caches_index = ListField(StringField())  # hash_value,obj_id
+    simhash_value_obj_id = StringField()  # hash_value,obj_id
     hash_type = StringField()
     meta = {
         'db_alias': 'simhash',
@@ -82,6 +76,18 @@ class SimhashInvertedIndex(Document):
     }
 
 
+def get_all_simhash(SimHashCache):
+    # print('db:{}\ncount: {} records'.format(SimHashCache._meta['db_alias'], len(records)))
+    return list(SimHashCache.objects.all())
+
+def get_simhash_count(SimHashCache):
+    return len(list(SimHashCache.objects.all()))
+
 if __name__ == '__main__':
-    simhashcache = SimHashCache().get_all_dup_ids()
-    print(simhashcache)
+    all = get_all_simhash(SimHashCache)
+    print(all)
+    objs = list()
+    for i in all:
+        objs.append((i['obj_id']))
+    print(objs)
+    SimHashCache.objects(obj_id='test1').delete()
