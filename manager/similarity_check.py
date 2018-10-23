@@ -16,7 +16,7 @@ from extract_features.extract_features_participle import Participle
 from fingerprints_storage.simhash_index_mongo import SimhashIndexWithMongo
 from fingerprints_storage.simhash_index_redis import SimhashIndexWithRedis
 from db.simhash_mongo import SimHashCache, get_all_simhash
-
+import threading
 
 class SimilarityCheck(object):
 
@@ -36,15 +36,18 @@ class SimilarityCheck(object):
             self.db = SimhashIndexWithRedis()
 
     def _extract_features(self, text, func='participle'):
+
         if func == 'participle':
             keywords = Participle().get_text_feature(text)
         elif func == 'tfidf':
             keywords = get_keywords_tfidf(text)
         else:
             raise Exception('Please provide a custom function ')
+
         return keywords
 
     def check_similarity(self, text, text_id):
+
         s1 = time.clock()
         keywords = self._extract_features(text)
         s2 = time.clock()
@@ -62,15 +65,15 @@ class SimilarityCheck(object):
     def update_db(self, update_frequency=3, keep_days=15):
         start_time = time.time()
         while True:
-            if time.time() - start_time > update_frequency * 1800:
+            if time.time() - start_time > update_frequency:
                 self._check_mongodb(keep_days=keep_days)
                 start_time = time.time()
 
     def _check_mongodb(self, keep_days=30):
 
         for fingerprint in self.get_fingerprint_from_mongodb():
-            if fingerprint['last_days'] > keep_days:
-                self.db.delete(obj_id=fingerprint['obj_id'],simhash=fingerprint['hash_value'])
+            if fingerprint[2] > keep_days:
+                self.db.delete(obj_id=fingerprint['obj_id'], simhash=fingerprint['hash_value'])
 
     def get_fingerprint_from_mongodb(self):
         records = get_all_simhash(self._SimHashCache)
@@ -78,12 +81,14 @@ class SimilarityCheck(object):
             # print('{}|{}|{}'.format(record['obj_id'], record['hash_value'], record['last_days']))
             yield list([record['obj_id'], record['hash_value'], record['last_days']])
 
-
-
-if __name__ == '__main__':
-    text ="Natural language processing (NLP) is a field of computer science, artificial intelligence and computational linguistics concerned with the interactions between computers and human (natural) languages, and, in particular, concerned with programming computers to fruitfully process large natural language corpora. Challenges in natural language processing frequently involve natural language understanding, natural language generation (frequently from formal, machine-readable logical forms), connecting language and machine perception, managing human-computer dialog systems, or some combination thereof." \
-    "The Georgetown experiment in 1954 involved fully automatic translation of more than sixty Russian sentences into English. The authors claimed that within three or five years, machine translation would be a solved problem.[2] However, real progress was much slower, and after the ALPAC report in 1966, which found that ten-year-long research had failed to fulfill the expectations, funding for machine translation was dramatically reduced. Little further research in machine translation was conducted until the late 1980s, when the first statistical machine translation systems were developed." \
-    "During the 1970s, many programmers began to write conceptual ontologies, which structured real-world information into computer-understandable data. Examples are MARGIE (Schank, 1975), SAM (Cullingford, 1978), PAM (Wilensky, 1978), TaleSpin (Meehan, 1976), QUALM (Lehnert, 1977), Politics (Carbonell, 1979), and Plot Units (Lehnert 1981). During this time, many chatterbots were written including PARRY, Racter, and Jabberwacky。"
+def main():
+    simcheck = SimilarityCheck(SimHashCache)
+    thread_1 = threading.Thread(target=simcheck.update_db)
+    thread_1.setDaemon(True)
+    thread_1.start()
+    text = "Natural language processing (NLP) is a field of computer science, artificial intelligence and computational linguistics concerned with the interactions between computers and human (natural) languages, and, in particular, concerned with programming computers to fruitfully process large natural language corpora. Challenges in natural language processing frequently involve natural language understanding, natural language generation (frequently from formal, machine-readable logical forms), connecting language and machine perception, managing human-computer dialog systems, or some combination thereof." \
+           "The Georgetown experiment in 1954 involved fully automatic translation of more than sixty Russian sentences into English. The authors claimed that within three or five years, machine translation would be a solved problem.[2] However, real progress was much slower, and after the ALPAC report in 1966, which found that ten-year-long research had failed to fulfill the expectations, Little further research in machine translation was conducted until the late 1980s, when the first statistical machine translation systems were developed." \
+           "During the 1970s, many programmers began to write conceptual ontologies, which structured real-world information into computer-understandable data. Examples are MARGIE (Schank, 1975), SAM (Cullingford, 1978), PAM (Wilensky, 1978), TaleSpin (Meehan, 1976), QUALM (Lehnert, 1977), Politics (Carbonell, 1979), and Plot Units (Lehnert 1981). During this time, many chatterbots were written including PARRY, Racter, and Jabberwacky。"
 
     simcheck = SimilarityCheck(SimHashCache)
     i = 0
@@ -91,9 +96,16 @@ if __name__ == '__main__':
         i += 1
         id = 'test{}'.format(i)
         s = time.clock()
-        dups = simcheck.check_similarity(text=text, text_id=id)
+        thread_2 = threading.Thread(target=simcheck.check_similarity, args=(text, id))
+        thread_2.setDaemon(True)
+        thread_2.start()
+        thread_2.join()
         e = time.clock()
         print('查找耗时{}'.format(e - s))
-        print(dups)
-        if i > 1000:
+        # print(thread_2)
+        if i > 100:
             break
+    thread_1.join()
+
+if __name__ == '__main__':
+    main()
