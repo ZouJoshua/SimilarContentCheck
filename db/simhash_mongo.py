@@ -8,8 +8,6 @@
 """
 
 import datetime
-import json
-
 
 from mongoengine import Document, IntField
 from mongoengine import StringField, ListField, DateTimeField
@@ -23,7 +21,6 @@ register_connection(**simhash_mongodb_config)
 class SimHashCache(Document):
     obj_id = StringField()
     hash_value = StringField()  # OverflowError: MongoDB can only handle up to 8-byte ints
-    text = StringField()
     hash_type = StringField()
     add_time = DateTimeField(default=datetime.datetime.now())
     update_time = DateTimeField(default=datetime.datetime.now())

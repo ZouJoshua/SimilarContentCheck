@@ -36,8 +36,11 @@ class SimhashRedis(object):
     def delete(self, name, value):
         return self.redis.srem(name, value)
 
-    def flushall(self):
-        return self.redis.flushall()
+    def flushdb(self):
+        return self.redis.flushdb()
+
+    def count(self, key):
+        self.redis.scard(key)
 
     @property
     def status(self):
@@ -45,16 +48,17 @@ class SimhashRedis(object):
 
 if __name__ == '__main__':
     redis = SimhashRedis()
-    id = {"simhash_obj_id": "b67ed5bc9bde424e_test4"}
-    test = {"keys": ["424e:0", "9bde:1", "d5bc:2", "a74c:3"]}
-    for key in test.get('keys'):
-        redis.add(key, id.get('simhash_obj_id'))
-
-    for i in test.get('keys'):
-        lst = redis.get(i)
-
-        for i in lst:
-            if isinstance(i, bytes):
-                i = i.decode()
-            sim2, obj_id = i.split('_', 1)
-            print(sim2)
+    # id = {"simhash_obj_id": "b67ed5bc9bde424e_test4"}
+    # test = {"keys": ["424e:0", "9bde:1", "d5bc:2", "a74c:3"]}
+    # for key in test.get('keys'):
+    #     redis.add(key, id.get('simhash_obj_id'))
+    #
+    # for i in test.get('keys'):
+    #     lst = redis.get(i)
+    #
+    #     for i in lst:
+    #         if isinstance(i, bytes):
+    #             i = i.decode()
+    #         sim2, obj_id = i.split('_', 1)
+    #         print(sim2)
+    print(type(redis))

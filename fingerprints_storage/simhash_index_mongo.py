@@ -104,7 +104,7 @@ class SimhashIndexWithMongo(object):
                 else:
                     # logging.warning('SimhashInvertedIndex not exists key %s: %s' % (key, e))
                     continue
-            with Timer(msg='find d < k {0:d}'.format(k)):
+            with Timer(msg='find d < k {:d}'.format(k)):
                 if len(simhash_caches_index) > 200:
                     logging.warning('Big bucket found. key:%s, len:%s', key, len(simhash_caches_index))
                 for simhash_cache in simhash_caches_index:
@@ -183,7 +183,7 @@ class SimhashIndexWithMongo(object):
             else:
                 m = 2 ** (self.offsets[i + 1] - offset) - 1
             c = simhash.fingerprint >> offset & m
-            yield '{0:x}:{0:x}'.format(c, i)
+            yield '{:x}:{:x}'.format(c, i)
 
     def bucket_size(self):
         return SimhashInvertedIndex.objects.count()

@@ -11,14 +11,6 @@ import os
 from os.path import dirname
 
 # MongoDB
-mongodb_config = {
-    'name': 'news',
-    'username': '',
-    'host': '127.0.0.1',
-    'password': '',
-    'port': 27017,
-    'alias': 'default',
-}
 simhash_mongodb_config = {
     'name': 'simhash',
     'username': '',
