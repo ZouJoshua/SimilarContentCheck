@@ -31,7 +31,7 @@ class SimilarityCheck(object):
         self.simhash_inverted_index = SimhashInvertedIndex
 
         self.objs = [(obj[0], obj[1]) for obj in self.get_simhash_from_mongodb(self.simhashcache)]
-        self.invert_index = [(obj[0], obj[1]) for obj in self.get_simhash_from_mongodb(self.simhash_inverted_index)]
+        self.invert_index = [(obj[0], obj[1]) for obj in self.get_inverted_index_from_mongodb(self.simhash_inverted_index)]
 
         self.db = SimhashIndexWithRedis(self.simhashcache, self.simhash_inverted_index, self.redis)
 
@@ -128,8 +128,7 @@ def main():
            "The Georgetown experiment in 1954 involved fully automatic translation of more than sixty Russian sentences into English. The authors claimed that within three or five years, machine translation would be a solved problem.[2] However, real progress was much slower, and after the ALPAC report in 1966, which found that ten-year-long research had failed to fulfill the expectations, Little further research in machine translation was conducted until the late 1980s, when the first statistical machine translation systems were developed." \
            "During the 1970s, many programmers began to write conceptual ontologies, which structured real-world information into computer-understandable data. Examples are MARGIE (Schank, 1975), SAM (Cullingford, 1978), PAM (Wilensky, 1978), TaleSpin (Meehan, 1976), QUALM (Lehnert, 1977), Politics (Carbonell, 1979), and Plot Units (Lehnert 1981). During this time, many chatterbots were written including PARRY, Racter, and Jabberwacky。"
     text_id = 'test'
-    import random
-    import string
+
     for i in range(100000):
         id = text_id + str(i)
         salt = ''.join(random.sample(string.ascii_letters + string.digits, 8))
@@ -151,7 +150,17 @@ def main():
         thr.join()
 
 if __name__ == '__main__':
+    import random
+    import string
     s = SimilarityCheck()
-    # for i in s.get_simhash_from_mongodb(s.simhashcache):
+    # for i in s.get_inverted_index_from_mongodb(s.simhash_inverted_index):
     #     print(i)
+    text = "Natural language processing (NLP) fully automatic translation of more than sixty Russian sentences into English. The authors claimed that within three or five years, machine translation would be a solved problem.[2] However, real progress was much slower, and after the ALPAC report in 1966, which found that ten-year-long research had failed to fulfill the expectations, Little further research in machine translation was conducted until the late 1980s, when the first statistical machine translation systems were developed." \
+           "During the 1970s, many programmers began to write conceptual ontologies, which structured real-world information into computer-understandable data. Examples are MARGIE (Schank, 1975), SAM (Cullingford, 1978), PAM (Wilensky, 1978), TaleSpin (Meehan, 1976), QUALM (Lehnert, 1977), Politics (Carbonell, 1979), and Plot Units (Lehnert 1981). During this time, many chatterbots were written including PARRY, Racter, and Jabberwacky。"
+    id = 'testxx'
+    for i in range(1000):
+        _text = text + str(i*25)
+        _id = id + str(i)
+        dups = s.check_similarity(_text, _id)
+        print(dups)
     print(s.redis.status)
