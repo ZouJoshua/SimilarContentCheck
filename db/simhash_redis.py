@@ -36,6 +36,9 @@ class SimhashRedis(object):
     def delete(self, name, value):
         return self.redis.srem(name, value)
 
+    def flushall(self):
+        return self.redis.flushall()
+
     @property
     def status(self):
         return self.redis.dbsize()
