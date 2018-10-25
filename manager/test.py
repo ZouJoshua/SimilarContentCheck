@@ -7,8 +7,8 @@
 @Desc    : 
 """
 
-import time
 import asyncio
+
 import redis
 
 now = lambda : time.time()
@@ -48,4 +48,21 @@ def main():
         loop.close()
 
 if __name__ == '__main__':
-    main()
+    # main()
+    import threading
+    import time
+
+    def hello(name):
+        print(name + ' started')
+        lock.acquire(True)
+        time.sleep(50)
+        print(name + ' running')
+        lock.release()
+        print(name + ' exit')
+
+
+    lock = threading.Lock()
+    a = threading.Thread(target=hello, args='a')
+    b = threading.Thread(target=hello, args='b')
+    a.start()
+    b.start()

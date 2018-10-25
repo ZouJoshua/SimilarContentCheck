@@ -7,10 +7,8 @@
 @Desc    : 
 """
 
-from db.simhash_mongo import SimHashCache
 import threading
 import time
-from queue import Queue
 from threading import Thread
 
 
@@ -34,14 +32,20 @@ def update():
     start = time.time()
     i = 0
     while True:
-        if time.time() - start > 20:
+        if time.time() - start > 10:
             i += 1
+            sleep()
             print('update {} times'.format(i))
             start = time.time()
 
+def sleep():
+    lock.acquire(True)
+    time.sleep(5)
+    lock.release()
 
 if __name__ == '__main__':
     thread_list = []
+    lock = threading.Lock()
     thread_1 = threading.Thread(target=update)
     thread_list.append(thread_1)
     thread_2 = DownloadWorker()

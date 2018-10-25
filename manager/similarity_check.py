@@ -7,18 +7,17 @@
 @Desc    : 
 """
 
-from extract_features.extract_features_tfidf import get_keywords_tfidf
-from extract_features.extract_features_participle import Participle
-from fingerprints_calculation.simhash import Simhash
-from fingerprints_storage.simhash_index_redis import SimhashIndexWithRedis
-# from fingerprints_storage.simhash_index import SimhashIndex
-# from fingerprints_storage.simhash_index_mongo import SimhashIndexWithMongo
-from db.simhash_redis import SimhashRedis
-from db.simhash_mongo import SimHashCache, SimhashInvertedIndex, get_all_simhash
-
+import threading
 import time
 from queue import Queue
-import threading
+
+from db.simhash_mongo import SimHashCache, SimhashInvertedIndex, get_all_simhash
+from db.simhash_redis import SimhashRedis
+from extract_features.extract_features_participle import Participle
+from extract_features.extract_features_tfidf import get_keywords_tfidf
+from fingerprints_calculation.simhash import Simhash
+from fingerprints_storage.simhash_index_redis import SimhashIndexWithRedis
+
 
 class SimilarityCheck(object):
 
@@ -72,7 +71,7 @@ class SimilarityCheck(object):
         self.db.add(obj_id=text_id, simhash=simhash)
         return dups_list
 
-    def update_db(self, update_frequency=3, keep_days=15):
+    def update_db(self, update_frequency=3, keep_days=1):
         print('更新数据库')
         start_time = time.time()
         while True:
@@ -81,9 +80,9 @@ class SimilarityCheck(object):
                 start_time = time.time()
 
     def _check_mongodb(self, keep_days=30):
-
+        print('正在更新数据库')
         for fingerprint in self.get_simhash_from_mongodb(self.simhashcache):
-            if fingerprint[2] > keep_days:
+            if fingerprint[2] >= keep_days:
                 self.db.delete(obj_id=fingerprint['obj_id'], simhash=fingerprint['hash_value'])
 
     @staticmethod
