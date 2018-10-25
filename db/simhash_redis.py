@@ -30,8 +30,11 @@ class SimhashRedis(object):
     def add(self, name, value):
         return self.redis.sadd(name, value)
 
-    def get(self, name):
+    def get_values(self, name):
         return self.redis.smembers(name)
+
+    def get_num(self,name):
+        return self.redis.scard(name)
 
     def delete(self, name, value):
         return self.redis.srem(name, value)
@@ -39,8 +42,14 @@ class SimhashRedis(object):
     def flushdb(self):
         return self.redis.flushdb()
 
-    def count(self, key):
-        self.redis.scard(key)
+    def count(self, pattern='*'):
+
+        names = self.redis.keys(pattern=pattern)
+        all_count = {}
+        for name in names:
+            all_count[name] = self.get_num(name)
+
+        return all_count
 
     @property
     def status(self):
@@ -62,3 +71,4 @@ if __name__ == '__main__':
     #         sim2, obj_id = i.split('_', 1)
     #         print(sim2)
     print(type(redis))
+    print(redis.count())

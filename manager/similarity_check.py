@@ -73,9 +73,10 @@ class SimilarityCheck(object):
         return dups_list
 
     def update_db(self, update_frequency=3, keep_days=15):
+        print('更新数据库')
         start_time = time.time()
         while True:
-            if time.time() - start_time > update_frequency:
+            if time.time() - start_time > update_frequency * 10:
                 self._check_mongodb(keep_days=keep_days)
                 start_time = time.time()
 
@@ -84,6 +85,7 @@ class SimilarityCheck(object):
         for fingerprint in self.get_simhash_from_mongodb(self.simhashcache):
             if fingerprint[2] > keep_days:
                 self.db.delete(obj_id=fingerprint['obj_id'], simhash=fingerprint['hash_value'])
+
     @staticmethod
     def get_simhash_from_mongodb(db):
 
@@ -100,67 +102,74 @@ class SimilarityCheck(object):
 
 class TextThread(threading.Thread):
 
-    def __init__(self, func, args=()):
+    def __init__(self, task_queue, result_queue, func):
         super(TextThread, self).__init__()
-        self.func = func
-        self.args = args
+        self.task = task_queue
+        self.result = result_queue
+        self.check_similarity = func
 
     def run(self):
-        self.result = self.func(*self.args)
+        while self.task.qsize() > 0:
+            item = self.task.get()
+            text, text_id = item
+            dups_list = self.check_similarity(text, text_id)
+            self.result.put({text_id: dups_list})
 
-    def get_result(self):
-        try:
-            return self.result
-        except Exception:
-            return None
-
-
-def check(text_queue, simcheck):
-    while text_queue.qsize() > 0:
-        item = text_queue.get()
-        text, text_id = item
-        dups_list = simcheck.check_similarity(text, text_id)
-        text_queue.task_done()
 
 def main():
-    text_queue = Queue()
+    task_queue = Queue()
+    result_queue = Queue()
+
+    simcheck = SimilarityCheck()
+
     text = "Natural language processing (NLP) is a field of computer science, artificial intelligence and computational linguistics concerned with the interactions between computers and human (natural) languages, and, in particular, concerned with programming computers to fruitfully process large natural language corpora. Challenges in natural language processing frequently involve natural language understanding, natural language generation (frequently from formal, machine-readable logical forms), connecting language and machine perception, managing human-computer dialog systems, or some combination thereof." \
            "The Georgetown experiment in 1954 involved fully automatic translation of more than sixty Russian sentences into English. The authors claimed that within three or five years, machine translation would be a solved problem.[2] However, real progress was much slower, and after the ALPAC report in 1966, which found that ten-year-long research had failed to fulfill the expectations, Little further research in machine translation was conducted until the late 1980s, when the first statistical machine translation systems were developed." \
            "During the 1970s, many programmers began to write conceptual ontologies, which structured real-world information into computer-understandable data. Examples are MARGIE (Schank, 1975), SAM (Cullingford, 1978), PAM (Wilensky, 1978), TaleSpin (Meehan, 1976), QUALM (Lehnert, 1977), Politics (Carbonell, 1979), and Plot Units (Lehnert 1981). During this time, many chatterbots were written including PARRY, Racter, and Jabberwacky。"
     text_id = 'test'
 
-    for i in range(100000):
+    for i in range(10000):
         id = text_id + str(i)
         salt = ''.join(random.sample(string.ascii_letters + string.digits, 8))
         _text = text + salt
         task = (_text, id)
-        text_queue.put(task)
+        task_queue.put(task)
+        # time.sleep(2)
+    print('已加入任务队列')
 
-    simcheck = SimilarityCheck()
     thread_list = []
     thread_1 = threading.Thread(target=simcheck.update_db)
     thread_list.append(thread_1)
-    # thread_2 = TextThread(check(text_queue, simcheck))
-    thread_2 = threading.Thread(target=check, args=(text_queue, simcheck))
+    thread_2 = TextThread(task_queue, result_queue, func=simcheck.check_similarity)
     thread_list.append(thread_2)
     for thr in thread_list:
         thr.setDaemon(True)
         thr.start()
-    for thr in thread_list:
-        thr.join()
+    while not result_queue.qsize():
+        print(result_queue.get())
+
+    print(task_queue.qsize())
+    print(thread_2.isAlive())
+
+    if not thread_2.isAlive() and not task_queue.qsize():
+        thread_1._stop()
+        thread_1.join()
+    else:
+        thread_2.join()
+
 
 if __name__ == '__main__':
     import random
     import string
-    s = SimilarityCheck()
-    # for i in s.get_inverted_index_from_mongodb(s.simhash_inverted_index):
-    #     print(i)
-    text = "Natural language processing (NLP) fully automatic translation of more than sixty Russian sentences into English. The authors claimed that within three or five years, machine translation would be a solved problem.[2] However, real progress was much slower, and after the ALPAC report in 1966, which found that ten-year-long research had failed to fulfill the expectations, Little further research in machine translation was conducted until the late 1980s, when the first statistical machine translation systems were developed." \
-           "During the 1970s, many programmers began to write conceptual ontologies, which structured real-world information into computer-understandable data. Examples are MARGIE (Schank, 1975), SAM (Cullingford, 1978), PAM (Wilensky, 1978), TaleSpin (Meehan, 1976), QUALM (Lehnert, 1977), Politics (Carbonell, 1979), and Plot Units (Lehnert 1981). During this time, many chatterbots were written including PARRY, Racter, and Jabberwacky。"
-    id = 'testxx'
-    for i in range(1000):
-        _text = text + str(i*25)
-        _id = id + str(i)
-        dups = s.check_similarity(_text, _id)
-        print(dups)
-    print(s.redis.status)
+    # s = SimilarityCheck()
+    # # for i in s.get_inverted_index_from_mongodb(s.simhash_inverted_index):
+    # #     print(i)
+    # text = "Natural language processing (NLP) fully automatic translation of more than sixty Russian sentences into English. The authors claimed that within three or five years, machine translation would be a solved problem.[2] However, real progress was much slower, and after the ALPAC report in 1966, which found that ten-year-long research had failed to fulfill the expectations, Little further research in machine translation was conducted until the late 1980s, when the first statistical machine translation systems were developed." \
+    #        "During the 1970s, many programmers began to write conceptual ontologies, which structured real-world information into computer-understandable data. Examples are MARGIE (Schank, 1975), SAM (Cullingford, 1978), PAM (Wilensky, 1978), TaleSpin (Meehan, 1976), QUALM (Lehnert, 1977), Politics (Carbonell, 1979), and Plot Units (Lehnert 1981). During this time, many chatterbots were written including PARRY, Racter, and Jabberwacky。"
+    # id = 'testxx'
+    # for i in range(1000000):
+    #     _text = text + str(i*25)
+    #     _id = id + str(i)
+    #     dups = s.check_similarity(_text, _id)
+    #     print(dups)
+    # print(s.redis.status)
+    main()

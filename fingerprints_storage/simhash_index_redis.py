@@ -107,7 +107,7 @@ class SimhashIndexWithRedis(object):
         assert simhash.hashbits == self.hashbits
         ans = set()
         for key in self.get_keys(simhash):
-            simhash_list = self.redis.get(name=key)
+            simhash_list = self.redis.get_values(name=key)
 
             if len(simhash_list) > 200:
                 logging.warning('Big bucket found. key:{}, len:{}'.format(key, len(simhash_list)))
