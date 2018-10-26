@@ -44,7 +44,7 @@ class SimilarityCheck(object):
             for ii in self.invert_index:
                 self.redis.add(ii[0], ii[1])
             s5 = time.clock()
-            logger.info("初始化数据库**********{}s".format(s5-s4))
+            logger.info("初始化数据库...{}s".format(s5-s4))
 
     def _extract_features(self, text, func='participle'):
 
@@ -62,28 +62,17 @@ class SimilarityCheck(object):
         s1 = time.clock()
         keywords = self._extract_features(text)
         s2 = time.clock()
-        logger.info("分词耗时**********{}s".format(s2 - s1))
+        logger.info("分词耗时...{}s".format(s2 - s1))
         simhash = Simhash(keywords)
         s3 = time.clock()
-        logger.info("计算指纹耗时**********{}s".format(s3 - s2))
+        logger.info("计算指纹耗时...{}s".format(s3 - s2))
         s6 = time.clock()
         dups_list = self.db.get_near_dups(simhash)
         s7 = time.clock()
-        logger.info("查找耗时**********{}s".format(s7-s6))
+        logger.info("查找耗时...{}s".format(s7-s6))
         self.db.add(obj_id=text_id, simhash=simhash)
-        logger.info('Add new text to db')
+        logger.info('Add new text to db...')
         return dups_list
-
-    def update_db(self, keep_days=1):
-
-        self._check_mongodb(keep_days=keep_days)
-
-    def _check_mongodb(self, keep_days=30):
-
-        logger.info('正在更新数据库')
-        for fingerprint in self.get_simhash_from_mongodb(self.simhashcache):
-            if fingerprint[2] >= keep_days:
-                self.db.delete(obj_id=fingerprint[0], simhash=fingerprint[1])
 
     @staticmethod
     def get_simhash_from_mongodb(db):
@@ -98,6 +87,18 @@ class SimilarityCheck(object):
         for record in records:
             yield list([record['key'], record['simhash_value_obj_id']])
 
+def update_db(simcheck, keep_days=15):
+
+    return _check_mongodb(simcheck, keep_days=keep_days)
+
+def _check_mongodb(simcheck, keep_days=30):
+
+    logger.info('正在更新数据库')
+    for fingerprint in simcheck.get_simhash_from_mongodb(simcheck.simhashcache):
+        simcheck.db.add(fingerprint[0],fingerprint[1])
+        if fingerprint[2] >= keep_days:
+            simcheck.db.delete(obj_id=fingerprint[0], simhash=fingerprint[1])
+    return simcheck
 
 def main():
     task_queue = Queue()
@@ -110,10 +111,10 @@ def main():
            "During the 1970s, many programmers began to write conceptual ontologies, which structured real-world information into computer-understandable data. Examples are MARGIE (Schank, 1975), SAM (Cullingford, 1978), PAM (Wilensky, 1978), TaleSpin (Meehan, 1976), QUALM (Lehnert, 1977), Politics (Carbonell, 1979), and Plot Units (Lehnert 1981). During this time, many chatterbots were written including PARRY, Racter, and Jabberwacky。"
     text_id = 'test'
 
-    for i in range(10000):
+    for i in range(6000, 10000):
         id = text_id + str(i)
         salt = ''.join(random.sample(string.ascii_letters + string.digits, 8))
-        _text = text + salt
+        _text = text + salt * 100
         task = (_text, id)
         task_queue.put(task)
         # time.sleep(2)
@@ -129,8 +130,10 @@ def main():
             text, text_id = item
             dups_list = simcheck.check_similarity(text, text_id)
             result_queue.put({text_id: dups_list})
-            if time.time() - start > UPDATE_FREQUENCY * 3600:
-                simcheck.update_db()
+            if time.time() - start > UPDATE_FREQUENCY:
+                simcheck.objs = [(obj[0], obj[1]) for obj in simcheck.get_simhash_from_mongodb(simcheck.simhashcache)]
+                simcheck = update_db(simcheck)
+                print(len(simcheck.objs))
                 start = time.time()
         else:
             print('队列没任务')
