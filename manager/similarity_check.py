@@ -36,6 +36,9 @@ class SimilarityCheck(object):
 
         self.db = SimhashIndexWithRedis(self.simhashcache, self.simhash_inverted_index, self.redis)
 
+        if not self.objs:
+            self.redis = self.redis.flushdb()
+
         if self.objs and self.invert_index:
             s4 = time.clock()
             for ii in self.invert_index:
@@ -64,14 +67,11 @@ class SimilarityCheck(object):
         s3 = time.clock()
         logger.info("计算指纹耗时**********{}s".format(s3 - s2))
         s6 = time.clock()
-        if not self.objs:
-            self.redis.flushdb()
-            self.db.add(obj_id=text_id, simhash=simhash)
-            logger.info('Add new text to db')
         dups_list = self.db.get_near_dups(simhash)
         s7 = time.clock()
         logger.info("查找耗时**********{}s".format(s7-s6))
         self.db.add(obj_id=text_id, simhash=simhash)
+        logger.info('Add new text to db')
         return dups_list
 
     def update_db(self, keep_days=1):
