@@ -62,7 +62,7 @@ class SimilarityCheck(object):
         logger.info("分词耗时**********{}s".format(s2 - s1))
         simhash = Simhash(keywords)
         s3 = time.clock()
-        flogger.info("计算指纹耗时**********{}s".format(s3 - s2))
+        logger.info("计算指纹耗时**********{}s".format(s3 - s2))
         s6 = time.clock()
         if not self.objs:
             self.redis.flushdb()

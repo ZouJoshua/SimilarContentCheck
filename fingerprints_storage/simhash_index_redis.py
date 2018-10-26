@@ -14,8 +14,7 @@ from fingerprints_calculation.simhash import Simhash
 from similarity_calculation.hamming_distance import HammingDistance
 from db.simhash_redis import SimhashRedis
 from db.simhash_mongo import SimHashCache, SimhashInvertedIndex
-
-from manager.similarity_check import logger
+import logging
 
 
 class SimhashIndexWithRedis(object):
@@ -40,11 +39,11 @@ class SimhashIndexWithRedis(object):
         self.simhash_inverted_index = simhashinvertedindex
 
         count = len(objs)
-        logger.info('Initializing {} data.'.format(count))
+        logging.info('Initializing {} data.'.format(count))
 
         for i, q in enumerate(objs):
             if i % 10000 == 0 or i == count - 1:
-                logger.info('{}/{}'.format(i + 1, count))
+                logging.info('{}/{}'.format(i + 1, count))
             self.add(*q)
 
     def _insert(self, obj_id=None, value=None):
@@ -111,7 +110,7 @@ class SimhashIndexWithRedis(object):
             simhash_list = self.redis.get_values(name=key)
 
             if len(simhash_list) > 200:
-                logger.warning('Big bucket found. key:{}, len:{}'.format(key, len(simhash_list)))
+                logging.warning('Big bucket found. key:{}, len:{}'.format(key, len(simhash_list)))
 
             for simhash_cache in simhash_list:
                 if isinstance(simhash_cache, bytes):
@@ -127,7 +126,7 @@ class SimhashIndexWithRedis(object):
                     if d < k:
                         ans.add(obj_id)
                 except Exception as e:
-                    logger.warning('not exists {}'.format(e))
+                    logging.warning('not exists {}'.format(e))
         return list(ans)
 
     def query_simhash_cache(self, obj_id):
@@ -150,7 +149,7 @@ class SimhashIndexWithRedis(object):
         elif isinstance(simhash, Simhash):
             simhash = simhash
         else:
-            logger.warning('simhash not str or an instance of Simhash')
+            logging.warning('simhash not str or an instance of Simhash')
             pass
 
         # delete simhash in mongodb

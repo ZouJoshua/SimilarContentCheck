@@ -9,7 +9,7 @@
 
 from redis import StrictRedis, ConnectionPool
 from setting import REDIS_HOST,REDIS_PORT
-from manager.similarity_check import logger
+# from manager.similarity_check import logger
 
 class SimhashRedis(object):
 
@@ -19,15 +19,14 @@ class SimhashRedis(object):
         self._db = redis_db
         self._password = redis_pw
         self.redis = self._redis_conn()
-        logger.info('Initializing redis...')
 
     def _redis_conn(self):
         try:
             pool = ConnectionPool(host=self._host, port=self._port, db=self._db, password=self._password)
             r = StrictRedis(connection_pool=pool)
-            return r
         except Exception as e:
-            logger.error('Database connection failed...')
+            raise Exception('Database connection failed...')
+        return r
 
     def add(self, name, value):
         return self.redis.sadd(name, value)
