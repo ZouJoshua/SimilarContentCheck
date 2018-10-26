@@ -4,7 +4,7 @@
 @Author  : Joshua
 @Time    : 2018/10/12 18:49
 @File    : timer.py
-@Desc    : 
+@Desc    : Time calculator
 """
 
 import time

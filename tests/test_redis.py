@@ -3,15 +3,14 @@
 """
 @Author  : Joshua
 @Time    : 2018/10/15 19:34
-@File    : test11.py
+@File    : test_redis.py
 @Desc    : 
 """
 
 import asyncio
-
 import redis
 
-now = lambda : time.time()
+now = lambda: time.time()
 
 def get_redis():
     connection_pool = redis.ConnectionPool(host='127.0.0.1', db=3)

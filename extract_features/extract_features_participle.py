@@ -10,6 +10,7 @@
 import string
 import re
 from itertools import groupby
+from manager.similarity_check import logger
 
 try:
     maketrans = ''.maketrans
@@ -26,6 +27,7 @@ class Participle(object):
         new_text = self._text_no_punctuation(text)
         _features = self._slice(new_text)
         features = {k: sum(1 for _ in g) for k, g in groupby(_features)}
+        logger.info('Getting features and weight of text...')
         return features
 
     def _text_no_punctuation(self, text):

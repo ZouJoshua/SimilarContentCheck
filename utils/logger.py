@@ -4,20 +4,10 @@
 @Author  : Joshua
 @Time    : 2018/10/12 18:48
 @File    : logger.py
-@Desc    : 
+@Desc    : log
 """
 
 
-"""
-日志模块
-包含三个日志生成器：
-1. flogger:日志输出到文件
-2. clogger:日志输出到控制台
-3. fclogger:日志同时输出到文件和控制台
-官方logging默认的日志级别设置为WARNING
-（日志级别等级CRITICAL > ERROR > WARNING > INFO > DEBUG > NOTSET）
-只有日志等级大于或等于设置的日志级别的日志才会被输出
-"""
 import logging.handlers
 import sys
 from setting import PROJECT_LOG_FILE
@@ -71,14 +61,14 @@ class Logger(object):
     def get_logger(self):
         return self.logger
 
-# file logger
-flogger = Logger('flogger', log2console=False, log2file=True, logfile=PROJECT_LOG_FILE).get_logger()
-# console logger
-clogger = Logger('clogger', log2console=True, log2file=False).get_logger()
-# file and console logger
-fclogger = Logger('fclogger', log2console=True, log2file=True, logfile=PROJECT_LOG_FILE).get_logger()
 
 if __name__ == "__main__":
+    # file logger
+    flogger = Logger('flogger', log2console=False, log2file=True, logfile=PROJECT_LOG_FILE).get_logger()
+    # console logger
+    clogger = Logger('clogger', log2console=True, log2file=False).get_logger()
+    # file and console logger
+    fclogger = Logger('fclogger', log2console=True, log2file=True, logfile=PROJECT_LOG_FILE).get_logger()
     while True:
         clogger.debug('debug')
         clogger.info('info')

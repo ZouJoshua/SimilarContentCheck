@@ -4,7 +4,7 @@
 @Author  : Joshua
 @Time    : 2018/9/28 19:20
 @File    : simhash.py
-@Desc    : 
+@Desc    : simhash fingerprint
 """
 
 from __future__ import division, unicode_literals
@@ -120,6 +120,7 @@ class Simhash(object):
                 _fingerprint |= masks[i]
         #         _fingerprint += 1 << i
         self.fingerprint = _fingerprint
+
 
 if __name__ == '__main__':
     str1 = {'hello': 3, 'world': 4, 'fine': 5, 'new': 2, 'text': 3}

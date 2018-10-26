@@ -4,19 +4,19 @@
 @Author  : Joshua
 @Time    : 2018/10/12 15:38
 @File    : simhash_index_redis.py
-@Desc    : 
+@Desc    : simhash storage with mongodb and redis
 """
 
-import logging
-import collections
-import datetime
-import time
 
+import datetime
 
 from fingerprints_calculation.simhash import Simhash
 from similarity_calculation.hamming_distance import HammingDistance
 from db.simhash_redis import SimhashRedis
 from db.simhash_mongo import SimHashCache, SimhashInvertedIndex
+
+from manager.similarity_check import logger
+
 
 class SimhashIndexWithRedis(object):
 
@@ -40,11 +40,11 @@ class SimhashIndexWithRedis(object):
         self.simhash_inverted_index = simhashinvertedindex
 
         count = len(objs)
-        logging.info('Initializing {} data.'.format(count))
+        logger.info('Initializing {} data.'.format(count))
 
         for i, q in enumerate(objs):
             if i % 10000 == 0 or i == count - 1:
-                logging.info('{}/{}'.format(i + 1, count))
+                logger.info('{}/{}'.format(i + 1, count))
             self.add(*q)
 
     def _insert(self, obj_id=None, value=None):
@@ -60,6 +60,7 @@ class SimhashIndexWithRedis(object):
         else:
             raise Exception('Value not text or simhash')
         assert simhash.hashbits == self.hashbits
+
         # Cache raw text information
         if obj_id and simhash:
 
@@ -110,7 +111,7 @@ class SimhashIndexWithRedis(object):
             simhash_list = self.redis.get_values(name=key)
 
             if len(simhash_list) > 200:
-                logging.warning('Big bucket found. key:{}, len:{}'.format(key, len(simhash_list)))
+                logger.warning('Big bucket found. key:{}, len:{}'.format(key, len(simhash_list)))
 
             for simhash_cache in simhash_list:
                 if isinstance(simhash_cache, bytes):
@@ -126,7 +127,7 @@ class SimhashIndexWithRedis(object):
                     if d < k:
                         ans.add(obj_id)
                 except Exception as e:
-                    logging.warning('not exists {}'.format(e))
+                    logger.warning('not exists {}'.format(e))
         return list(ans)
 
     def query_simhash_cache(self, obj_id):
@@ -142,18 +143,31 @@ class SimhashIndexWithRedis(object):
         """
         Args:
             obj_id: a string
-            simhash: an instance of Simhash
+            simhash: an instance of Simhash or str
         """
+        if isinstance(simhash, str):
+            simhash = Simhash(value=simhash, hashbits=self.hashbits)
+        elif isinstance(simhash, Simhash):
+            simhash = simhash
+        else:
+            logger.warning('simhash not str or an instance of Simhash')
+            pass
+
         # delete simhash in mongodb
-        self.simhashcache.objects(obj_id=obj_id).delete()
+        try:
+            self.simhashcache.objects(obj_id=obj_id).delete()
+        except:
+            pass
         # delete simhash in mongodb and redis
         for key in self.get_keys(simhash):
             v = '{:x},{}'.format(simhash.fingerprint, obj_id)
 
-            simhash_invertindex = self.simhash_inverted_index.objects.get(key=key)
-            if simhash_invertindex.simhash_value_obj_id == v:
-                self.simhash_inverted_index.objects(key=key).delete()
-
+            try:
+                simhash_invertindex = self.simhash_inverted_index.objects.get(key=key)
+                if simhash_invertindex.simhash_value_obj_id == v:
+                    self.simhash_inverted_index.objects(key=key).delete()
+            except:
+                pass
             self.redis.delete(name=key, value=v)
 
     def add(self, obj_id, simhash):

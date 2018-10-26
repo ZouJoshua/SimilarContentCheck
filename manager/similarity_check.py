@@ -4,10 +4,9 @@
 @Author  : Joshua
 @Time    : 2018/10/12 17:16
 @File    : similarity_check.py
-@Desc    : 
+@Desc    : start
 """
 
-import threading
 import time
 from queue import Queue
 
@@ -17,7 +16,10 @@ from extract_features.extract_features_participle import Participle
 from extract_features.extract_features_tfidf import get_keywords_tfidf
 from fingerprints_calculation.simhash import Simhash
 from fingerprints_storage.simhash_index_redis import SimhashIndexWithRedis
+from utils.logger import Logger
+from setting import PROJECT_LOG_FILE
 
+logger = Logger('simhash', log2console=False, log2file=True, logfile=PROJECT_LOG_FILE).get_logger()
 
 class SimilarityCheck(object):
 
@@ -39,7 +41,7 @@ class SimilarityCheck(object):
             for ii in self.invert_index:
                 self.redis.add(ii[0], ii[1])
             s5 = time.clock()
-            print("初始化数据库**********{}s".format(s5-s4))
+            logger.info("初始化数据库**********{}s".format(s5-s4))
 
     def _extract_features(self, text, func='participle'):
 
@@ -57,33 +59,31 @@ class SimilarityCheck(object):
         s1 = time.clock()
         keywords = self._extract_features(text)
         s2 = time.clock()
-        print("分词耗时**********{}s".format(s2 - s1))
+        logger.info("分词耗时**********{}s".format(s2 - s1))
         simhash = Simhash(keywords)
         s3 = time.clock()
-        print("计算指纹耗时**********{}s".format(s3 - s2))
+        flogger.info("计算指纹耗时**********{}s".format(s3 - s2))
         s6 = time.clock()
         if not self.objs:
             self.redis.flushdb()
             self.db.add(obj_id=text_id, simhash=simhash)
+            logger.info('Add new text to db')
         dups_list = self.db.get_near_dups(simhash)
         s7 = time.clock()
-        print("查找耗时**********{}s".format(s7-s6))
+        logger.info("查找耗时**********{}s".format(s7-s6))
         self.db.add(obj_id=text_id, simhash=simhash)
         return dups_list
 
-    def update_db(self, update_frequency=3, keep_days=1):
-        print('更新数据库')
-        start_time = time.time()
-        while True:
-            if time.time() - start_time > update_frequency * 10:
-                self._check_mongodb(keep_days=keep_days)
-                start_time = time.time()
+    def update_db(self, keep_days=1):
+
+        self._check_mongodb(keep_days=keep_days)
 
     def _check_mongodb(self, keep_days=30):
-        print('正在更新数据库')
+
+        logger.info('正在更新数据库')
         for fingerprint in self.get_simhash_from_mongodb(self.simhashcache):
             if fingerprint[2] >= keep_days:
-                self.db.delete(obj_id=fingerprint['obj_id'], simhash=fingerprint['hash_value'])
+                self.db.delete(obj_id=fingerprint[0], simhash=fingerprint[1])
 
     @staticmethod
     def get_simhash_from_mongodb(db):
@@ -97,22 +97,6 @@ class SimilarityCheck(object):
         records = get_all_simhash(db)
         for record in records:
             yield list([record['key'], record['simhash_value_obj_id']])
-
-
-class TextThread(threading.Thread):
-
-    def __init__(self, task_queue, result_queue, func):
-        super(TextThread, self).__init__()
-        self.task = task_queue
-        self.result = result_queue
-        self.check_similarity = func
-
-    def run(self):
-        while self.task.qsize() > 0:
-            item = self.task.get()
-            text, text_id = item
-            dups_list = self.check_similarity(text, text_id)
-            self.result.put({text_id: dups_list})
 
 
 def main():
@@ -135,40 +119,29 @@ def main():
         # time.sleep(2)
     print('已加入任务队列')
 
-    thread_list = []
-    thread_1 = threading.Thread(target=simcheck.update_db)
-    thread_list.append(thread_1)
-    thread_2 = TextThread(task_queue, result_queue, func=simcheck.check_similarity)
-    thread_list.append(thread_2)
-    for thr in thread_list:
-        thr.setDaemon(True)
-        thr.start()
+    UPDATE_FREQUENCY = 5
+
+    start = time.time()
+    while True:
+
+        if task_queue.qsize():
+            item = task_queue.get()
+            text, text_id = item
+            dups_list = simcheck.check_similarity(text, text_id)
+            result_queue.put({text_id: dups_list})
+            if time.time() - start > UPDATE_FREQUENCY * 3600:
+                simcheck.update_db()
+                start = time.time()
+        else:
+            print('队列没任务')
+            break
+
     while not result_queue.qsize():
         print(result_queue.get())
 
-    print(task_queue.qsize())
-    print(thread_2.isAlive())
-
-    if not thread_2.isAlive() and not task_queue.qsize():
-        thread_1._stop()
-        thread_1.join()
-    else:
-        thread_2.join()
 
 
 if __name__ == '__main__':
     import random
     import string
-    # s = SimilarityCheck()
-    # # for i in s.get_inverted_index_from_mongodb(s.simhash_inverted_index):
-    # #     print(i)
-    # text = "Natural language processing (NLP) fully automatic translation of more than sixty Russian sentences into English. The authors claimed that within three or five years, machine translation would be a solved problem.[2] However, real progress was much slower, and after the ALPAC report in 1966, which found that ten-year-long research had failed to fulfill the expectations, Little further research in machine translation was conducted until the late 1980s, when the first statistical machine translation systems were developed." \
-    #        "During the 1970s, many programmers began to write conceptual ontologies, which structured real-world information into computer-understandable data. Examples are MARGIE (Schank, 1975), SAM (Cullingford, 1978), PAM (Wilensky, 1978), TaleSpin (Meehan, 1976), QUALM (Lehnert, 1977), Politics (Carbonell, 1979), and Plot Units (Lehnert 1981). During this time, many chatterbots were written including PARRY, Racter, and Jabberwacky。"
-    # id = 'testxx'
-    # for i in range(1000000):
-    #     _text = text + str(i*25)
-    #     _id = id + str(i)
-    #     dups = s.check_similarity(_text, _id)
-    #     print(dups)
-    # print(s.redis.status)
     main()

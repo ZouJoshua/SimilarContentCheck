@@ -4,13 +4,13 @@
 @Author  : Joshua
 @Time    : 2018/10/19 16:30
 @File    : simhash_mongo.py
-@Desc    : 
+@Desc    : simhash storage of fingerprint and simhash inverted index with mongodb
 """
 
 import datetime
 
 from mongoengine import Document, IntField
-from mongoengine import StringField, ListField, DateTimeField
+from mongoengine import StringField, DateTimeField
 from mongoengine import register_connection
 from setting import simhash_mongodb_config
 register_connection(**simhash_mongodb_config)
@@ -78,6 +78,7 @@ def get_all_simhash(SimHashCache):
     return list(SimHashCache.objects.all())
 
 def get_simhash_count(SimHashCache):
+
     return len(list(SimHashCache.objects.all()))
 
 if __name__ == '__main__':
