@@ -18,14 +18,13 @@ from fingerprints_calculation.simhash import Simhash
 from fingerprints_storage.simhash_index_redis import SimhashIndexWithRedis
 from utils.logger import Logger
 from setting import PROJECT_LOG_FILE
+import json
 
 logger = Logger('simhash', log2console=False, log2file=True, logfile=PROJECT_LOG_FILE).get_logger()
 
-class SimilarityCheck(object):
+class InitDB(object):
 
-    def __init__(self, hashbits=64, k=3):
-        self.hashbits = hashbits
-        self.k = k
+    def __init__(self):
 
         self.redis = SimhashRedis()
         self.simhashcache = SimHashCache
@@ -38,41 +37,14 @@ class SimilarityCheck(object):
 
         if not self.objs:
             self.redis = self.redis.flushdb()
+            logger.info("初始化 Redis...")
 
         if self.objs and self.invert_index:
             s4 = time.clock()
             for ii in self.invert_index:
                 self.redis.add(ii[0], ii[1])
             s5 = time.clock()
-            logger.info("初始化数据库...{}s".format(s5-s4))
-
-    def _extract_features(self, text, func='participle'):
-
-        if func == 'participle':
-            keywords = Participle().get_text_feature(text)
-        elif func == 'tfidf':
-            keywords = get_keywords_tfidf(text)
-        else:
-            raise Exception('Please provide a custom function ')
-
-        return keywords
-
-    def check_similarity(self, text, text_id):
-
-        s1 = time.clock()
-        keywords = self._extract_features(text)
-        s2 = time.clock()
-        logger.info("分词耗时...{}s".format(s2 - s1))
-        simhash = Simhash(keywords)
-        s3 = time.clock()
-        logger.info("计算指纹耗时...{}s".format(s3 - s2))
-        s6 = time.clock()
-        dups_list = self.db.get_near_dups(simhash)
-        s7 = time.clock()
-        logger.info("查找耗时...{}s".format(s7-s6))
-        self.db.add(obj_id=text_id, simhash=simhash)
-        logger.info('Add new text to db...')
-        return dups_list
+            logger.info("从 MongoDB 加载数据到 Redis...{}s".format(s5-s4))
 
     @staticmethod
     def get_simhash_from_mongodb(db):
@@ -87,64 +59,106 @@ class SimilarityCheck(object):
         for record in records:
             yield list([record['key'], record['simhash_value_obj_id']])
 
-def update_db(simcheck, keep_days=15):
+class Check(object):
 
-    return _check_mongodb(simcheck, keep_days=keep_days)
+    def __init__(self, text_id, text, db):
+        self.text_id = text_id
+        self.text = text
+        self.db = db
 
-def _check_mongodb(simcheck, keep_days=30):
+    def _extract_features(self, func='participle'):
 
+        if func == 'participle':
+            keywords = Participle().get_text_feature(self.text)
+        elif func == 'tfidf':
+            keywords = get_keywords_tfidf(self.text)
+        else:
+            raise Exception('Please provide a custom function ')
+
+        return keywords
+
+    def check_similarity(self):
+
+        s1 = time.clock()
+        keywords = self._extract_features()
+        s2 = time.clock()
+        logger.info("Text_id:{} 分词耗时...{}s".format(self.text_id, (s2 - s1)))
+        simhash = Simhash(keywords)
+        s3 = time.clock()
+        logger.info("计算 Text_id:{}指纹耗时...{}s".format(self.text_id, (s3 - s2)))
+        s6 = time.clock()
+        dups_list = self.db.get_near_dups(simhash)
+        s7 = time.clock()
+        logger.info("查找 Text_id:{}耗时...{}s".format(self.text_id, (s7-s6)))
+        self.db.add(obj_id=self.text_id, simhash=simhash)
+        logger.info('Add Text_id:{} to db...'.format(self.text_id))
+
+        return dups_list
+
+
+def update_db(init_db, keep_days=15):
+
+    return _check_mongodb(init_db, keep_days=keep_days)
+
+def _check_mongodb(init_db, keep_days=30):
+
+    s = time.time()
     logger.info('正在更新数据库')
-    for fingerprint in simcheck.get_simhash_from_mongodb(simcheck.simhashcache):
-        simcheck.db.add(fingerprint[0],fingerprint[1])
+    f_mongo = init_db.get_simhash_from_mongodb(init_db.simhashcache)
+    _e1 = time.time()
+    logger.info('读取数据库耗时{}'.format(_e1 - s))
+    for fingerprint in f_mongo:
+        init_db.db.add(fingerprint[0], fingerprint[1])
         if fingerprint[2] >= keep_days:
-            simcheck.db.delete(obj_id=fingerprint[0], simhash=fingerprint[1])
-    return simcheck
+            init_db.db.delete(obj_id=fingerprint[0], simhash=fingerprint[1])
+    e = time.time()
+    logger.info('更新数据库耗时{}'.format(e - _e1))
+    return init_db
 
-def main():
-    task_queue = Queue()
-    result_queue = Queue()
+def work(task_queue, result_queue, init_db):
 
-    simcheck = SimilarityCheck()
-
-    text = "Natural language processing (NLP) is a field of computer science, artificial intelligence and computational linguistics concerned with the interactions between computers and human (natural) languages, and, in particular, concerned with programming computers to fruitfully process large natural language corpora. Challenges in natural language processing frequently involve natural language understanding, natural language generation (frequently from formal, machine-readable logical forms), connecting language and machine perception, managing human-computer dialog systems, or some combination thereof." \
-           "The Georgetown experiment in 1954 involved fully automatic translation of more than sixty Russian sentences into English. The authors claimed that within three or five years, machine translation would be a solved problem.[2] However, real progress was much slower, and after the ALPAC report in 1966, which found that ten-year-long research had failed to fulfill the expectations, Little further research in machine translation was conducted until the late 1980s, when the first statistical machine translation systems were developed." \
-           "During the 1970s, many programmers began to write conceptual ontologies, which structured real-world information into computer-understandable data. Examples are MARGIE (Schank, 1975), SAM (Cullingford, 1978), PAM (Wilensky, 1978), TaleSpin (Meehan, 1976), QUALM (Lehnert, 1977), Politics (Carbonell, 1979), and Plot Units (Lehnert 1981). During this time, many chatterbots were written including PARRY, Racter, and Jabberwacky。"
-    text_id = 'test'
-
-    for i in range(6000, 10000):
-        id = text_id + str(i)
-        salt = ''.join(random.sample(string.ascii_letters + string.digits, 8))
-        _text = text + salt * 100
-        task = (_text, id)
-        task_queue.put(task)
-        # time.sleep(2)
-    print('已加入任务队列')
-
-    UPDATE_FREQUENCY = 5
-
+    UPDATE_FREQUENCY = 60
     start = time.time()
+    i = 0
     while True:
 
         if task_queue.qsize():
+            i += 1
             item = task_queue.get()
             text, text_id = item
-            dups_list = simcheck.check_similarity(text, text_id)
+            dups_list = Check(text, text_id, init_db.db).check_similarity()
             result_queue.put({text_id: dups_list})
+            if i > 10000:
+                break
             if time.time() - start > UPDATE_FREQUENCY:
-                simcheck.objs = [(obj[0], obj[1]) for obj in simcheck.get_simhash_from_mongodb(simcheck.simhashcache)]
-                simcheck = update_db(simcheck)
-                print(len(simcheck.objs))
+                init_db.objs = [(obj[0], obj[1]) for obj in init_db.get_simhash_from_mongodb(init_db.simhashcache)]
+                init_db = update_db(init_db)
+                print(len(init_db.objs))
                 start = time.time()
         else:
             print('队列没任务')
             break
 
-    while not result_queue.qsize():
+    while not result_queue.empty():
         print(result_queue.get())
 
 
+def get_task(task_queue, filepath):
+    with open(filepath, encoding='utf-8') as f:
+        lines = f.readlines()
+        for line in lines[10000:]:
+            d = json.loads(line)
+            text_id = d['resource_id']
+            text = d['html']
+            task_queue.put((text_id, text))
+    return task_queue
+
 
 if __name__ == '__main__':
-    import random
-    import string
-    main()
+    filepath = r'C:\Users\zoushuai\Desktop\new1_json\part-00000'
+    init_db = InitDB()
+    task_queue = Queue()
+    result_queue = Queue()
+    queue = get_task(task_queue, filepath)
+    print(queue.qsize())
+    work(queue, result_queue, init_db)
