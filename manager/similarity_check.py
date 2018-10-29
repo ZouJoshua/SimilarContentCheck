@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 """
 @Author  : Joshua
-@Time    : 2018/10/12 17:16
+@Time    : 2018/10/29 20:54
 @File    : similarity_check.py
-@Desc    : start
+@Desc    :
 """
 
 import time
@@ -117,7 +117,7 @@ def _check_mongodb(init_db, keep_days=30):
 
 def work(task_queue, result_queue, init_db):
 
-    UPDATE_FREQUENCY = 60
+    UPDATE_FREQUENCY = 30
     start = time.time()
     i = 0
     while True:
