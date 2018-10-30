@@ -19,6 +19,7 @@ simhash_mongodb_config = {
     'port': 27017,
     'alias': 'simhash',
 }
+
 # Reids
 REDIS_HOST = '127.0.0.1'
 REDIS_PORT = 6379

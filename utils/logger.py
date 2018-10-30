@@ -53,7 +53,7 @@ class Logger(object):
             # Create a handler for writing to the log file
             # fh = logging.FileHandler(logfile)
             # Create a handler for changing the log file once a day, up to 15, scroll delete
-            fh = logging.handlers.TimedRotatingFileHandler(logfile, 'D', 1, 15, encoding='utf-8')
+            fh = logging.handlers.TimedRotatingFileHandler(logfile, when='D', interval=1, backupCount=15, encoding='utf-8')
             fh.setLevel(loglevel2file)
             fh.setFormatter(formatter)
             self.logger.addHandler(fh)

@@ -30,7 +30,7 @@ class InitDB(object):
         self.simhash_inverted_index = SimhashInvertedIndex
 
 
-        self.invert_index = [(obj[0], obj[1], obj[2], obj[3], obj[4]) for obj in self.get_inverted_index_from_mongodb(self.simhash_inverted_index)]
+        self.invert_index = [(obj[0], obj[1], obj[2], obj[3]) for obj in self.get_inverted_index_from_mongodb(self.simhash_inverted_index)]
 
         self.db = SimhashIndexWithRedis(self.simhash_inverted_index, self.redis)
 
@@ -39,8 +39,8 @@ class InitDB(object):
             logger.info("初始化 Redis...")
         else:
             s4 = time.clock()
-            for ii in self.invert_index:
-                self.redis.add(ii[3], ii[4])
+            for i in self.invert_index:
+                self.redis.add(i[2], i[3])
             s5 = time.clock()
             logger.info("从 MongoDB 加载数据到 Redis...{}s".format(s5-s4))
 
@@ -48,7 +48,7 @@ class InitDB(object):
     def get_inverted_index_from_mongodb(db):
         records = get_all_simhash(db)
         for record in records:
-            yield list([record['obj_id'], record['hash_value'], record['last_days'],record['key'], record['simhash_value_obj_id']])
+            yield list([record['obj_id'], record['last_days'], record['key'], record['simhash_value_obj_id']])
 
 class Check(object):
 
@@ -92,19 +92,32 @@ def update_db(init_db, keep_days=15):
     return _check_mongodb(init_db, keep_days=keep_days)
 
 def _check_mongodb(init_db, keep_days=30):
+    logger.info('正在更新数据库')
+    redis = SimhashRedis()
+    logger.info('Redis has {} keys'.format(redis.status))
+
+    redis.flushdb()
+    logger.info('Now redis have been cleaned {} keys'.format(redis.status))
 
     s = time.time()
-    logger.info('正在更新数据库')
-    init_db.redis.flushdb()
-    f_mongo = init_db.get_inverted_index_from_mongodb(init_db.simhash_inverted_index)
+    f_mongo = init_db.get_inverted_index_from_mongodb(SimhashInvertedIndex)
     _e1 = time.time()
     logger.info('读取数据库耗时{}'.format(_e1 - s))
     for fingerprint in f_mongo:
-        init_db.db.add(fingerprint[0], fingerprint[1])
-        if fingerprint[2] >= keep_days:
-            init_db.db.delete(obj_id=fingerprint[0], simhash=fingerprint[1])
-    e = time.time()
-    logger.info('更新数据库耗时{}'.format(e - _e1))
+        init_db.db.update(fingerprint[0])
+    _e2 = time.time()
+    logger.info('更新日期耗时{}'.format(_e2 - _e1))
+    f_mongo_new = init_db.get_inverted_index_from_mongodb(SimhashInvertedIndex)
+    for fingerprint in f_mongo_new:
+        if fingerprint[1] >= keep_days:
+            init_db.db.delete(obj_id=fingerprint[0], simhash=fingerprint[3].split(',')[0])
+    _e3 = time.time()
+    logger.info('删除超时数据耗时{}'.format(_e3 - _e2))
+    f_mongo_update = init_db.get_inverted_index_from_mongodb(SimhashInvertedIndex)
+    for fingerprint in f_mongo_update:
+        redis.add(fingerprint[2], fingerprint[3])
+    _e = time.time()
+    logger.info('加载更新后数据库耗时{}'.format(_e - _e3))
     return init_db
 
 def work(task_queue, result_queue, init_db):
@@ -117,15 +130,15 @@ def work(task_queue, result_queue, init_db):
         if task_queue.qsize():
             i += 1
             item = task_queue.get()
-            text, text_id = item
-            dups_list = Check(text, text_id, init_db.db).check_similarity()
+            text_id, text = item
+            dups_list = Check(text_id, text, init_db.db).check_similarity()
             result_queue.put({text_id: dups_list})
             if i > 10000:
                 break
             if time.time() - start > UPDATE_FREQUENCY:
                 # init_db.objs = [(obj[0], obj[1]) for obj in init_db.get_simhash_from_mongodb(init_db.simhashcache)]
                 init_db = update_db(init_db)
-                print(len(init_db.objs))
+                # print(len(init_db.objs))
                 start = time.time()
         else:
             print('队列没任务')
@@ -136,21 +149,19 @@ def work(task_queue, result_queue, init_db):
 
 
 
-
-
 if __name__ == '__main__':
 
     def get_task(task_queue, filepath):
         with open(filepath, encoding='utf-8') as f:
             lines = f.readlines()
-            for line in lines[10000:]:
+            for line in lines[:5000]:
                 d = json.loads(line)
                 text_id = d['resource_id']
                 text = d['html']
                 task_queue.put((text_id, text))
         return task_queue
 
-    filepath = r'C:\Users\ZS\Desktop\part-00000'
+    filepath = r'C:\Users\zoushuai\Desktop\new1_json\part-00000'
     init_db = InitDB()
     task_queue = Queue()
     result_queue = Queue()

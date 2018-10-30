@@ -18,7 +18,7 @@ from similarity_calculation.hamming_distance import HammingDistance
 
 class SimhashIndexWithRedis(object):
 
-    def __init__(self, simhashinvertedindex, redis, objs=(), hashbits=64, k=3, hash_type='news'):
+    def __init__(self, simhashinvertedindex, redis, objs=(), hashbits=64, k=3):
         """
         Args:
             redis: an instance of redis
@@ -28,11 +28,11 @@ class SimhashIndexWithRedis(object):
                 obj_id is a string, simhash is an instance of Simhash
             hashbits: the same with the one for Simhash
             k: the tolerance
-            hash_type: the hash type  of the text
+            # hash_type: the hash type  of the text
         """
         self.k = k
         self.hashbits = hashbits
-        self.hash_type = hash_type
+        # self.hash_type = hash_type
         self.redis = redis
         self.simhash_inverted_index = simhashinvertedindex
 
@@ -65,8 +65,7 @@ class SimhashIndexWithRedis(object):
             v = '{:x},{}'.format(simhash.fingerprint, obj_id)  # Convert to hexadecimal for compressed storage, which saves space and converts back when querying
             for key in self.get_keys(simhash):
                 try:
-                    invert_index = self.simhash_inverted_index(key=key, hash_type=self.hash_type,
-                                                        simhash_value_obj_id=v)
+                    invert_index = self.simhash_inverted_index(key=key, simhash_value_obj_id=v)
                     add_time = invert_index.add_time
                     update_time = datetime.datetime.now()
                     invert_index.update_time = update_time
@@ -80,7 +79,6 @@ class SimhashIndexWithRedis(object):
                     # print('%s,%s,%s' % (e, key, v))
                     pass
 
-            return invert_index
 
     def _find(self, value, k=3):
         assert value != None
@@ -153,6 +151,16 @@ class SimhashIndexWithRedis(object):
     def add(self, obj_id, simhash):
         return self._insert(obj_id=obj_id, value=simhash)
 
+    def update(self, obj_id):
+        if self.simhash_inverted_index.objects(obj_id=obj_id):
+            for row in self.simhash_inverted_index.objects(obj_id=obj_id):
+                add_time = row.add_time
+                update_time = datetime.datetime.now()
+                row.update_time = update_time
+                row.last_days = (update_time - add_time).days
+                row.save()
+        return
+
     def get_near_dups(self, simhash):
         """
         Args:
@@ -181,17 +189,27 @@ class SimhashIndexWithRedis(object):
         return self.redis.status
 
 if __name__ == '__main__':
-    s = SimhashIndexWithRedis(SimHashCache, SimhashInvertedIndex, SimhashRedis())
-    import random
-    import string
-    for i in range(100):
-        obj_id = 'test'+ str(i)
-        salt = ''.join(random.sample(string.ascii_letters + string.digits, 60))
-        value = 'weoigjnalksdmgl;kansd;kgnqw;smdfkasndg;olqwokmdfl,ndg;qw' + salt
-        simhash = Simhash(value)
-        test = s.add(obj_id, value)
-        print(test)
-        # s.delete('test3', simhash)
-        print(s.bucket_size)
-    a = s.redis.get('a903:2')
-    print(a)
+    # s = SimhashIndexWithRedis(SimhashInvertedIndex, SimhashRedis())
+    # import random
+    # import string
+    # for i in range(100):
+    #     obj_id = 'test'+ str(i)
+    #     salt = ''.join(random.sample(string.ascii_letters + string.digits, 60))
+    #     value = 'weoigjnalksdmgl;kansd;kgnqw;smdfkasndg;olqwokmdfl,ndg;qw' + salt
+    #     simhash = Simhash(value)
+    #     test = s.add(obj_id, value)
+    #     print(test)
+    #     # s.delete('test3', simhash)
+    #     print(s.bucket_size)
+    # a = s.redis.get('a903:2')
+    # print(a)
+    s = SimhashInvertedIndex
+    for i in s.objects(obj_id='1491824535189884', key='4d9d:3'):
+        add_time = i.add_time
+        print(add_time)
+        update_time = datetime.datetime.now()
+        i.update_time = update_time
+        i.last_days = (update_time - add_time).days
+        if i.last_days == 0:
+            i.delete()
+        i.save()

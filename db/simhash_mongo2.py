@@ -8,27 +8,40 @@
 """
 
 import datetime
+import time
 
+from mongoengine import register_connection
+from mongoengine import connect
+from setting import simhash_mongodb_config
 from mongoengine import Document, IntField
 from mongoengine import StringField, DateTimeField
-from mongoengine import register_connection
 
-from setting import simhash_mongodb_config
 register_connection(**simhash_mongodb_config)
 
-# print('simhash db\n', json.dumps(simhash_mongodb_config, indent=4))
-
+# _retry = 0
+# _status = False
+# while not _status and _retry <= 3:
+#     try:
+#         connect('simhash', host='mongodb://localhost:27017/simhash_invert_index')
+#         _status = True
+#     except:
+#         print("连接失败，正在重试")
+#         _status = False
+#         _retry += 1
+#         time.sleep(2)
+#         if _retry == 4:
+#             raise Exception("Mongodb连接失败，请检查")
 
 class SimhashInvertedIndex(Document):
     """
     simhash inverted index
     """
     obj_id = StringField()
-    hash_value = StringField()  # OverflowError: MongoDB can only handle up to 8-byte ints
+    # hash_value = StringField()  # OverflowError: MongoDB can only handle up to 8-byte ints
     key = StringField()
     # simhash_caches_index = ListField(StringField())  # hash_value,obj_id
     simhash_value_obj_id = StringField()  # hash_value,obj_id
-    hash_type = StringField()
+    # hash_type = StringField()
     add_time = DateTimeField(default=datetime.datetime.now())
     update_time = DateTimeField(default=datetime.datetime.now())
     last_days = IntField(default=0)
@@ -44,8 +57,8 @@ class SimhashInvertedIndex(Document):
             "-update_time",
             "last_days",
             "obj_id",
-            "hash_value",
-            "hash_type",
+            # "hash_value",
+            # "hash_type",
             {
                     "fields": ["key", 'simhash_value_obj_id'],
                     "unique":True,
