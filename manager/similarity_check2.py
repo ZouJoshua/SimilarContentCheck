@@ -32,13 +32,14 @@ class InitDB(object):
 
         self.invert_index = [(obj[0], obj[1], obj[2], obj[3]) for obj in self.get_inverted_index_from_mongodb(self.simhash_inverted_index)]
 
-        self.db = SimhashIndexWithRedis(self.simhash_inverted_index, self.redis)
+        self.siwr = SimhashIndexWithRedis(self.simhash_inverted_index, self.redis)
 
         if not self.invert_index:
-            self.redis = self.redis.flushdb()
+            self.redis.flushdb()
             logger.info("初始化 Redis...")
         else:
             s4 = time.clock()
+            self.redis.flushdb()
             for i in self.invert_index:
                 self.redis.add(i[2], i[3])
             s5 = time.clock()
@@ -52,10 +53,10 @@ class InitDB(object):
 
 class Check(object):
 
-    def __init__(self, text_id, text, db):
+    def __init__(self, text_id, text, siwr):
         self.text_id = text_id
         self.text = text
-        self.db = db
+        self.siwr = siwr
 
     def _extract_features(self, func='participle'):
 
@@ -78,13 +79,13 @@ class Check(object):
         s3 = time.clock()
         logger.info("计算 Text_id:{}指纹耗时...{}s".format(self.text_id, (s3 - s2)))
         s6 = time.clock()
-        dups_list = self.db.get_near_dups(simhash)
+        dups_list = self.siwr.get_near_dups(simhash)
         s7 = time.clock()
         logger.info("查找 Text_id:{}耗时...{}s".format(self.text_id, (s7-s6)))
-        self.db.add(obj_id=self.text_id, simhash=simhash)
+        self.siwr.add(obj_id=self.text_id, simhash=simhash)
         logger.info('Add Text_id:{} to db...'.format(self.text_id))
 
-        return dups_list
+        return dups_list, self.siwr
 
 
 def update_db(init_db, keep_days=15):
@@ -104,13 +105,13 @@ def _check_mongodb(init_db, keep_days=30):
     _e1 = time.time()
     logger.info('读取数据库耗时{}'.format(_e1 - s))
     for fingerprint in f_mongo:
-        init_db.db.update(fingerprint[0])
+        init_db.siwr.update(fingerprint[0])
     _e2 = time.time()
     logger.info('更新日期耗时{}'.format(_e2 - _e1))
     f_mongo_new = init_db.get_inverted_index_from_mongodb(SimhashInvertedIndex)
     for fingerprint in f_mongo_new:
         if fingerprint[1] >= keep_days:
-            init_db.db.delete(obj_id=fingerprint[0], simhash=fingerprint[3].split(',')[0])
+            init_db.siwr.delete(obj_id=fingerprint[0], simhash=fingerprint[3].split(',')[0])
     _e3 = time.time()
     logger.info('删除超时数据耗时{}'.format(_e3 - _e2))
     f_mongo_update = init_db.get_inverted_index_from_mongodb(SimhashInvertedIndex)
@@ -122,7 +123,7 @@ def _check_mongodb(init_db, keep_days=30):
 
 def work(task_queue, result_queue, init_db):
 
-    UPDATE_FREQUENCY = 30
+    UPDATE_FREQUENCY = 360000
     start = time.time()
     i = 0
     while True:
@@ -131,10 +132,11 @@ def work(task_queue, result_queue, init_db):
             i += 1
             item = task_queue.get()
             text_id, text = item
-            dups_list = Check(text_id, text, init_db.db).check_similarity()
+            dups_list, _db = Check(text_id, text, init_db.siwr).check_similarity()
             result_queue.put({text_id: dups_list})
-            if i > 10000:
-                break
+            init_db.siwr = _db
+            # if i > 10000:
+            #     break
             if time.time() - start > UPDATE_FREQUENCY:
                 # init_db.objs = [(obj[0], obj[1]) for obj in init_db.get_simhash_from_mongodb(init_db.simhashcache)]
                 init_db = update_db(init_db)
@@ -154,7 +156,7 @@ if __name__ == '__main__':
     def get_task(task_queue, filepath):
         with open(filepath, encoding='utf-8') as f:
             lines = f.readlines()
-            for line in lines[:5000]:
+            for line in lines[91000:]:
                 d = json.loads(line)
                 text_id = d['resource_id']
                 text = d['html']
