@@ -7,11 +7,15 @@
 @Desc    : simhash storage of fingerprint and simhash inverted index with mongodb
 """
 
+import os
+import sys
+
+dirname = os.path.split(os.path.realpath(__file__))
+sys.path.append(os.path.dirname(dirname))
+
 import datetime
-import time
 
 from mongoengine import register_connection
-from mongoengine import connect
 from setting import simhash_mongodb_config
 from mongoengine import Document, IntField
 from mongoengine import StringField, DateTimeField
