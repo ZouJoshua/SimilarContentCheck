@@ -4,7 +4,7 @@
 @Author  : Joshua
 @Time    : 2018/10/18 18:50
 @File    : __init__.py.py
-@Desc    : 
+@Desc    : setting
 """
 
 import os

@@ -4,7 +4,7 @@
 @Author  : Joshua
 @Time    : 2018/10/9 10:24
 @File    : hamming_distance.py
-@Desc    : 
+@Desc    : hamming distance
 """
 
 class HammingDistance(object):
