@@ -74,13 +74,13 @@ class SimhashInvertedIndex(Document):
         return 'obj_id:{}'.format(self.obj_id)
 
 
-def get_all_simhash(SimHashCache):
+def get_all_simhash(SimhashInvertedIndex):
     # print('db:{}\ncount: {} records'.format(SimHashCache._meta['db_alias'], len(records)))
-    return list(SimHashCache.objects.all())
+    return list(SimhashInvertedIndex.objects.all())
 
-def get_simhash_count(SimHashCache):
+def get_simhash_count(SimhashInvertedIndex):
 
-    return len(list(SimHashCache.objects.all()))
+    return len(list(SimhashInvertedIndex.objects.all()))
 
 if __name__ == '__main__':
     all = get_all_simhash(SimhashInvertedIndex)

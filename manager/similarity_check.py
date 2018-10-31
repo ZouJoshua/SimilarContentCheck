@@ -14,7 +14,7 @@ sys.path.append(dirname(dirname(os.path.realpath(__file__))))
 
 import time
 
-from db.simhash_mongo import SimhashInvertedIndex, get_all_simhash
+from db.simhash_mongo import SimhashInvertedIndex, get_all_simhash, get_simhash_count
 from db.simhash_redis import SimhashRedis
 from extract_features.extract_features_participle import Participle
 from extract_features.extract_features_tfidf import get_keywords_tfidf
@@ -32,8 +32,7 @@ class InitDB(object):
         self.redis = SimhashRedis()
         self.simhash_inverted_index = SimhashInvertedIndex
 
-        self.invert_index = [(obj[0], obj[1], obj[2], obj[3]) for obj in self.get_inverted_index_from_mongodb(self.simhash_inverted_index)]
-
+        self.invert_index = self.simhash_inverted_index.objects.first()
         if not self.invert_index:
             self.redis.flushdb()
             self.siwr = SimhashIndexWithRedis(self.simhash_inverted_index, self.redis)
@@ -41,7 +40,7 @@ class InitDB(object):
         else:
             s4 = time.clock()
             self.redis.flushdb()
-            for i in self.invert_index:
+            for i in self.get_inverted_index_from_mongodb(self.simhash_inverted_index):
                 self.redis.add(i[2], i[1], i[3])
             self.siwr = SimhashIndexWithRedis(self.simhash_inverted_index, self.redis)
             s5 = time.clock()
@@ -163,7 +162,7 @@ if __name__ == '__main__':
         while not result_queue.empty():
             print(result_queue.get())
 
-    filepath = r'C:\Users\zoushuai\Desktop\new1_json\part-00002'
+    filepath = r'C:\Users\zoushuai\Desktop\new1_json\part-00005'
     init_db = InitDB()
     task_queue = Queue()
     result_queue = Queue()
