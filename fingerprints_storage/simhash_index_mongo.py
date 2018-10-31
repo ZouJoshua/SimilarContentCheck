@@ -14,7 +14,7 @@ from utils.timer import Timer
 
 from fingerprints_calculation.simhash import Simhash
 from similarity_calculation.hamming_distance import HammingDistance
-from db.simhash_mongo import SimHashCache, SimhashInvertedIndex
+from db.simhash_mongo import SimhashInvertedIndex
 
 class SimhashIndexWithMongo(object):
 

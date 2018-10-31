@@ -9,29 +9,31 @@
 
 from unittest import main, TestCase
 
-from fingerprints_calculation.simhash import Simhash, SimhashIndex
-
+from fingerprints_calculation.simhash import Simhash
+from similarity_calculation.hamming_distance import HammingDistance
+from fingerprints_storage.simhash_index_redis import SimhashIndexWithRedis
 from sklearn.feature_extraction.text import TfidfVectorizer
+
 
 class TestSimhash(TestCase):
 
     def test_int_value(self):
-        self.assertEqual(Simhash(0).value, 0)
-        self.assertEqual(Simhash(4390059585430954713).value, 4390059585430954713)
-        self.assertEqual(Simhash(9223372036854775808).value, 9223372036854775808)
+        self.assertEqual(Simhash(0).fingerprint, 0)
+        self.assertEqual(Simhash(4390059585430954713).fingerprint, 4390059585430954713)
+        self.assertEqual(Simhash(9223372036854775808).fingerprint, 9223372036854775808)
 
     def test_value(self):
-        self.assertEqual(Simhash(['aaa', 'bbb']).value, 57087923692560392)
+        self.assertEqual(Simhash(['aaa', 'bbb']).fingerprint, 57087923692560392)
 
     def test_distance(self):
         sh = Simhash('How are you? I AM fine. Thanks. And you?')
         sh2 = Simhash('How old are you ? :-) i am fine. Thanks. And you?')
-        self.assertTrue(sh.distance(sh2) > 0)
+        self.assertTrue(sh.fingerprint(sh2) > 0)
 
         sh3 = Simhash(sh2)
-        self.assertEqual(sh2.distance(sh3), 0)
+        self.assertEqual(sh2.fingerprint(sh3), 0)
 
-        self.assertNotEqual(Simhash('1').distance(Simhash('2')), 0)
+        self.assertNotEqual(Simhash('1').fingerprint(Simhash('2')), 0)
 
     def test_chinese(self):
         self.maxDiff = None
@@ -43,13 +45,13 @@ class TestSimhash(TestCase):
         sh5 = Simhash(u'How are you i am fine.ablar ablar xyz blar blar blar blar blar blar blar than')
         sh6 = Simhash(u'How are you i am fine.ablar ablar xyz blar blar blar blar blar blar blar thank')
 
-        self.assertEqual(sh1.distance(sh2), 0)
+        self.assertEqual(HammingDistance(sh1).distance(sh2), 0)
 
-        self.assertTrue(sh4.distance(sh6) < 3)
-        self.assertTrue(sh5.distance(sh6) < 3)
+        self.assertTrue(HammingDistance(sh4).distance(sh6) < 3)
+        self.assertTrue(HammingDistance(sh5).distance(sh6) < 3)
 
     def test_short(self):
-        shs = [Simhash(s).value for s in ('aa', 'aaa', 'aaaa', 'aaaab', 'aaaaabb', 'aaaaabbb')]
+        shs = [Simhash(s).fingerprint for s in ('aa', 'aaa', 'aaaa', 'aaaab', 'aaaaabb', 'aaaaabbb')]
 
         for i, sh1 in enumerate(shs):
             for j, sh2 in enumerate(shs):
@@ -82,12 +84,12 @@ class TestSimhash(TestCase):
         # features as token -> weight dicts
         D0 = D.getrow(0)
         dict_features = dict(zip([voc[j] for j in D0.indices], D0.data))
-        self.assertEqual(Simhash(dict_features).value, 17583409636488780916)
+        self.assertEqual(Simhash(dict_features).fingerprint, 17583409636488780916)
 
         # the sparse and non-sparse features should obviously yield
         # different results
-        self.assertNotEqual(Simhash(dict_features).value,
-                            Simhash(data[0]).value)
+        self.assertNotEqual(Simhash(dict_features).fingerprint,
+                            Simhash(data[0]).fingerprint)
 
 
 class TestSimhashIndex(TestCase):
@@ -100,7 +102,7 @@ class TestSimhashIndex(TestCase):
 
     def setUp(self):
         objs = [(str(k), Simhash(v)) for k, v in self.data.items()]
-        self.index = SimhashIndex(objs, k=10)
+        self.index = SimhashIndexWithRedis(objs, k=10)
 
     def test_get_near_dup(self):
         s1 = Simhash(u'How are you i am fine.ablar ablar xyz blar blar blar blar blar blar blar thank')
