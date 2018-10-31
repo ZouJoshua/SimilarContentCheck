@@ -10,9 +10,7 @@
 import os
 import sys
 from os.path import dirname
-
-_dirname = os.path.split(os.path.realpath(__file__))[0]
-sys.path.append(os.path.dirname(_dirname))
+sys.path.append(dirname(os.path.realpath(__file__)))
 
 
 # MongoDB

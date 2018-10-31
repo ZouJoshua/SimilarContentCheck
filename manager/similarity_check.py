@@ -7,6 +7,10 @@
 @Desc    : main
 """
 
+import sys
+import os
+from os.path import dirname
+sys.path.append(dirname(dirname(os.path.realpath(__file__))))
 
 import time
 
