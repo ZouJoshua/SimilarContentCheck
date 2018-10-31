@@ -29,6 +29,7 @@ simhash_mongodb_config = {
 REDIS_HOST = '127.0.0.1'
 REDIS_PORT = 6379
 REDIS_URL = None
+SAVE_DAYS = 30
 
 PROJECT_ROOT = dirname(dirname(dirname(os.path.abspath(__file__)))).replace('\\', '/')
 LOG_PATH = PROJECT_ROOT + '/logs/'

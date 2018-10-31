@@ -7,35 +7,32 @@
 @Desc    : simhash storage with mongodb and redis
 """
 
-
 import datetime
+import time
+import logging
 
+from setting import SAVE_DAYS
+from db.simhash_mongo import SimhashInvertedIndex
 from fingerprints_calculation.simhash import Simhash
 from similarity_calculation.hamming_distance import HammingDistance
-from db.simhash_redis import SimhashRedis
-from db.simhash_mongo import SimHashCache, SimhashInvertedIndex
-import logging
 
 
 class SimhashIndexWithRedis(object):
 
-    def __init__(self, simhashcache, simhashinvertedindex, redis, objs=(), hashbits=64, k=3, hash_type='news'):
+    def __init__(self, simhashinvertedindex, redis, objs=(), hashbits=64, k=3):
         """
         Args:
             redis: an instance of redis
             simhashinvertedindex : an instance of simhashinvertedindex(mongodb)
-            simhashcache: an instance of simhashcache(mongodb)
             objs: a list of (obj_id, origin_text)
                 obj_id is a string, simhash is an instance of Simhash
             hashbits: the same with the one for Simhash
             k: the tolerance
-            hash_type: the hash type  of the text
         """
         self.k = k
         self.hashbits = hashbits
-        self.hash_type = hash_type
+        # self.hash_type = hash_type
         self.redis = redis
-        self.simhashcache = simhashcache
         self.simhash_inverted_index = simhashinvertedindex
 
         count = len(objs)
@@ -63,36 +60,23 @@ class SimhashIndexWithRedis(object):
         # Cache raw text information
         if obj_id and simhash:
 
-            # Store or update the cache to mongodb
-            simhashcaches = self.simhashcache.objects.filter(obj_id=obj_id,
-                     hash_type=self.hash_type).order_by('last_days')
-            if simhashcaches:
-                simhashcache = simhashcaches[0]
-            else:
-                simhashcache = self.simhashcache(obj_id=obj_id,
-                            hash_type=self.hash_type)
-            # if isinstance(value, str):
-            #     simhashcache.text = value
-            add_time = simhashcache.add_time
-            update_time = datetime.datetime.now()
-            simhashcache.update_time = update_time
-            simhashcache.last_days = (update_time - add_time).days
-            simhashcache.hash_value = '{:x}'.format(simhash.fingerprint)
-            simhashcache.save()
-
-            # cache invert index into mongodb and redis
+            # Store or update the cache to mongodb,cache invert index into mongodb and redis
             v = '{:x},{}'.format(simhash.fingerprint, obj_id)  # Convert to hexadecimal for compressed storage, which saves space and converts back when querying
             for key in self.get_keys(simhash):
                 try:
-                    invert_index = self.simhash_inverted_index(key=key, hash_type=self.hash_type,
-                                                        simhash_value_obj_id=v)
+                    invert_index = self.simhash_inverted_index(key=key, simhash_value_obj_id=v)
+                    add_time = int(time.time())
+                    invert_index.add_time = add_time
+                    invert_index.obj_id = obj_id
+                    # invert_index.last_days = (update_time - add_time) // (3600*24)
+                    # invert_index.hash_value = '{:x}'.format(simhash.fingerprint)
                     invert_index.save()
-                    self.redis.add(name=key, value=v)
+
+                    self.redis.add(name=key, timenode=add_time, value=v)
                 except Exception as e:
                     # print('%s,%s,%s' % (e, key, v))
                     pass
 
-            return simhashcache
 
     def _find(self, value, k=3):
         assert value != None
@@ -131,11 +115,11 @@ class SimhashIndexWithRedis(object):
 
     def query_simhash_cache(self, obj_id):
         """Find similar objects by obj_id"""
-        simhash_caches = self.simhashcache.objects.filter(obj_id__contains=obj_id)
+        simhash_caches = self.simhash_inverted_index.objects.filter(obj_id__contains=obj_id)
         return simhash_caches
 
     def find_similiar(self, obj_id):
-        simhash_caches = self.simhashcache.objects.filter(obj_id__contains=obj_id)
+        simhash_caches = self.simhash_inverted_index.objects.filter(obj_id__contains=obj_id)
         return simhash_caches
 
     def delete(self, obj_id, simhash):
@@ -154,23 +138,28 @@ class SimhashIndexWithRedis(object):
 
         # delete simhash in mongodb
         try:
-            self.simhashcache.objects(obj_id=obj_id).delete()
+            self.simhash_inverted_index.objects(obj_id=obj_id).delete()
         except:
             pass
-        # delete simhash in mongodb and redis
+        # delete simhash in redis
         for key in self.get_keys(simhash):
             v = '{:x},{}'.format(simhash.fingerprint, obj_id)
-
-            try:
-                simhash_invertindex = self.simhash_inverted_index.objects.get(key=key)
-                if simhash_invertindex.simhash_value_obj_id == v:
-                    self.simhash_inverted_index.objects(key=key).delete()
-            except:
-                pass
             self.redis.delete(name=key, value=v)
+        return
 
     def add(self, obj_id, simhash):
         return self._insert(obj_id=obj_id, value=simhash)
+
+    def update(self, obj_id):
+        if self.simhash_inverted_index.objects(obj_id=obj_id):
+            for row in self.simhash_inverted_index.objects(obj_id=obj_id):
+                add_time = row.add_time
+                update_time = int(time.time())
+                last_days = (update_time - add_time) // 3600*24
+                if last_days > SAVE_DAYS:
+                    row.delete()
+                    row.save()
+        return
 
     def get_near_dups(self, simhash):
         """
@@ -200,17 +189,27 @@ class SimhashIndexWithRedis(object):
         return self.redis.status
 
 if __name__ == '__main__':
-    s = SimhashIndexWithRedis(SimHashCache, SimhashInvertedIndex, SimhashRedis())
-    import random
-    import string
-    for i in range(100):
-        obj_id = 'test'+ str(i)
-        salt = ''.join(random.sample(string.ascii_letters + string.digits, 60))
-        value = 'weoigjnalksdmgl;kansd;kgnqw;smdfkasndg;olqwokmdfl,ndg;qw' + salt
-        simhash = Simhash(value)
-        test = s.add(obj_id, value)
-        print(test)
-        # s.delete('test3', simhash)
-        print(s.bucket_size)
-    a = s.redis.get('a903:2')
-    print(a)
+    # s = SimhashIndexWithRedis(SimhashInvertedIndex, SimhashRedis())
+    # import random
+    # import string
+    # for i in range(100):
+    #     obj_id = 'test'+ str(i)
+    #     salt = ''.join(random.sample(string.ascii_letters + string.digits, 60))
+    #     value = 'weoigjnalksdmgl;kansd;kgnqw;smdfkasndg;olqwokmdfl,ndg;qw' + salt
+    #     simhash = Simhash(value)
+    #     test = s.add(obj_id, value)
+    #     print(test)
+    #     # s.delete('test3', simhash)
+    #     print(s.bucket_size)
+    # a = s.redis.get('a903:2')
+    # print(a)
+    s = SimhashInvertedIndex
+    for i in s.objects(obj_id='1491824535189884', key='4d9d:3'):
+        add_time = i.add_time
+        print(add_time)
+        update_time = datetime.datetime.now()
+        i.update_time = update_time
+        i.last_days = (update_time - add_time).days
+        if i.last_days == 0:
+            i.delete()
+        i.save()

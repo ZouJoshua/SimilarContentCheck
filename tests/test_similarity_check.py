@@ -10,7 +10,7 @@
 import time
 from queue import Queue
 
-from db.simhash_mongo import SimHashCache, SimhashInvertedIndex, get_all_simhash
+from db.simhash_mongo import SimhashInvertedIndex, get_all_simhash
 from db.simhash_redis import SimhashRedis
 from extract_features.extract_features_participle import Participle
 from extract_features.extract_features_tfidf import get_keywords_tfidf

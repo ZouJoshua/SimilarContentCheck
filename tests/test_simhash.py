@@ -4,7 +4,7 @@
 @Author  : Joshua
 @Time    : 2018/9/28 19:27
 @File    : test_simhash.py
-@Desc    : 
+@Desc    : simhash test
 """
 
 from unittest import main, TestCase

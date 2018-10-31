@@ -6,3 +6,9 @@
 @File    : run.py
 @Desc    : 
 """
+
+from manager.similarity_check import Check
+from manager.similarity_check import InitDB
+
+if __name__ == '__main__':
+    pass

@@ -7,9 +7,10 @@
 @Desc    : 
 """
 
+import time
+
 from redis import StrictRedis, ConnectionPool
-from setting import REDIS_HOST,REDIS_PORT
-# from manager.similarity_check import logger
+from setting import SAVE_DAYS
 
 class SimhashRedis(object):
 
@@ -26,19 +27,27 @@ class SimhashRedis(object):
             r = StrictRedis(connection_pool=pool)
         except Exception as e:
             raise Exception('Database connection failed...')
-        return r
+        else:
+            return r
 
-    def add(self, name, value):
-        return self.redis.sadd(name, value)
+    def add(self, name, timenode, value):
+
+        return self.redis.zadd(name, timenode, value)
 
     def get_values(self, name):
-        return self.redis.smembers(name)
+
+        now = int(time.time())
+        timeline = now - 3600 * 24 * SAVE_DAYS
+        self.redis.zremrangebyscore(name, 0, timeline)
+        # print(self.redis.zrangebyscore(name, 0, timeline))
+        return self.redis.zrange(name, timeline, now)
+
 
     def get_num(self,name):
-        return self.redis.scard(name)
+        return self.redis.zcard(name)
 
     def delete(self, name, value):
-        return self.redis.srem(name, value)
+        return self.redis.zrem(name, value)
 
     def flushdb(self):
         return self.redis.flushdb()
@@ -58,18 +67,12 @@ class SimhashRedis(object):
 
 if __name__ == '__main__':
     redis = SimhashRedis()
-    # id = {"simhash_obj_id": "b67ed5bc9bde424e_test4"}
-    # test = {"keys": ["424e:0", "9bde:1", "d5bc:2", "a74c:3"]}
-    # for key in test.get('keys'):
-    #     redis.add(key, id.get('simhash_obj_id'))
-    #
-    # for i in test.get('keys'):
-    #     lst = redis.get(i)
-    #
-    #     for i in lst:
-    #         if isinstance(i, bytes):
-    #             i = i.decode()
-    #         sim2, obj_id = i.split('_', 1)
-    #         print(sim2)
-    print(type(redis))
-    print(redis.count())
+    redis.add('x1', 1540980776, 'test1')
+    redis.add('x1', 1540980746, 'test2')
+    redis.add('x1', 1540980726, 'test3')
+
+    for key in redis.redis.keys(pattern='*'):
+        print(key)
+        s = redis.get_values(key)
+        print(s)
+
