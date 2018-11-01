@@ -129,15 +129,15 @@ if __name__ == '__main__':
     def get_task(task_queue, filepath):
         with open(filepath, encoding='utf-8') as f:
             lines = f.readlines()
-            for line in lines[20000:]:
+            for line in lines[:20000]:
                 d = json.loads(line)
                 text_id = d['resource_id']
                 text = d['html']
                 task_queue.put((text_id, text))
         return task_queue
 
-    def work(task_queue, result_queue, init_db):
-
+    def work_with_mongo_redis(task_queue, result_queue):
+        init_db = InitDB()
         UPDATE_FREQUENCY = 360000
         start = time.time()
         i = 0
@@ -149,7 +149,7 @@ if __name__ == '__main__':
                 text_id, text = item
                 dups_list, _db = Check(text_id, text, init_db.siwr).check_similarity()
                 result_queue.put({text_id: dups_list})
-                init_db.siwr = _db
+                # init_db.siwr = _db
                 # if i > 10000:
                 #     break
                 if time.time() - start > UPDATE_FREQUENCY:
@@ -162,10 +162,25 @@ if __name__ == '__main__':
         while not result_queue.empty():
             print(result_queue.get())
 
-    filepath = r'C:\Users\zoushuai\Desktop\new1_json\part-00005'
-    init_db = InitDB()
+    def work_with_redis(task_queue, result_queue):
+
+        siwr = SimhashIndexWithRedis(SimhashInvertedIndex, SimhashRedis())
+        while True:
+
+            if task_queue.qsize():
+                item = task_queue.get()
+                text_id, text = item
+                dups_list, _db = Check(text_id, text, siwr).check_similarity()
+                print(dups_list)
+                result_queue.put({text_id: dups_list})
+            else:
+                print('队列没任务')
+                break
+
+    filepath = r'C:\Users\zoushuai\Desktop\new1_json\part-00006'
     task_queue = Queue()
     result_queue = Queue()
     queue = get_task(task_queue, filepath)
     print(queue.qsize())
-    work(queue, result_queue, init_db)
+    work_with_mongo_redis(queue, result_queue)
+    # work_with_redis(queue, result_queue)
