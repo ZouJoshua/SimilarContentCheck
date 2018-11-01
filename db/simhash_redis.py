@@ -10,11 +10,11 @@
 import time
 
 from redis import StrictRedis, ConnectionPool
-from setting import SAVE_DAYS
+from setting import SAVE_DAYS, REDIS_HOST, REDIS_PORT
 
 class SimhashRedis(object):
 
-    def __init__(self, redis_host='localhost', redis_port=6379, redis_db=0, redis_pw=''):
+    def __init__(self, redis_host=REDIS_HOST, redis_port=REDIS_PORT, redis_db=0, redis_pw=''):
         self._host = redis_host
         self._port = redis_port
         self._db = redis_db

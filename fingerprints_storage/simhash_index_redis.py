@@ -158,7 +158,7 @@ class SimhashIndexWithRedis(object):
                 last_days = (update_time - add_time) // 3600*24
                 if last_days > SAVE_DAYS:
                     row.delete()
-                    row.save()
+                row.save()
         return
 
     def get_near_dups(self, simhash):
