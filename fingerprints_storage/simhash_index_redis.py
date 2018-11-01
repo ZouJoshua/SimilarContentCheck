@@ -7,7 +7,6 @@
 @Desc    : simhash storage with mongodb and redis
 """
 
-import datetime
 import time
 import logging
 
@@ -19,7 +18,7 @@ from similarity_calculation.hamming_distance import HammingDistance
 
 class SimhashIndexWithRedis(object):
 
-    def __init__(self, simhashinvertedindex, redis, objs=(), hashbits=64, k=3):
+    def __init__(self, simhashinvertedindex, redis, objs=(), hashbits=64, k=3, logger=None):
         """
         Args:
             redis: an instance of redis
@@ -28,20 +27,27 @@ class SimhashIndexWithRedis(object):
                 obj_id is a string, simhash is an instance of Simhash
             hashbits: the same with the one for Simhash
             k: the tolerance
+            logger:  an instance of Logger
         """
+        if logger is None:
+            self.log = logging.getLogger("simhash")
+        else:
+            self.log = logger
+
         self.k = k
         self.hashbits = hashbits
         # self.hash_type = hash_type
         self.redis = redis
         self.simhash_inverted_index = simhashinvertedindex
 
-        count = len(objs)
-        logging.info('Initializing {} data.'.format(count))
+        if objs:
+            count = len(objs)
+            self.log.info('Initializing {} data.'.format(count))
 
-        for i, q in enumerate(objs):
-            if i % 10000 == 0 or i == count - 1:
-                logging.info('{}/{}'.format(i + 1, count))
-            self.add(*q)
+            for i, q in enumerate(objs):
+                if i % 10000 == 0 or i == count - 1:
+                    self.log.info('{}/{}'.format(i + 1, count))
+                self.add(*q)
 
     def _insert(self, obj_id=None, value=None):
         """Insert hash value into mongodb and redis
@@ -75,6 +81,7 @@ class SimhashIndexWithRedis(object):
                     self.redis.add(name=key, timenode=add_time, value=v)
                 except Exception as e:
                     # print('%s,%s,%s' % (e, key, v))
+                    self.log.warning('DB has same value{}'.format(e))
                     pass
 
 
@@ -86,39 +93,39 @@ class SimhashIndexWithRedis(object):
         elif isinstance(value, Simhash):
             simhash = value
         else:
+            self.log.warning('value not text or simhash')
             raise Exception('value not text or simhash')
 
         assert simhash.hashbits == self.hashbits
         ans = set()
         for key in self.get_keys(simhash):
-            simhash_list = self.redis.get_values(name=key)
+            try:
+                simhash_list = self.redis.get_values(name=key)
+            except:
+                self.log.warning('Wrong with getting values from redis')
+            else:
+                if len(simhash_list) > 200:
+                    self.log.warning('Big bucket found. key:{}, len:{}'.format(key, len(simhash_list)))
 
-            if len(simhash_list) > 200:
-                logging.warning('Big bucket found. key:{}, len:{}'.format(key, len(simhash_list)))
+                for simhash_cache in simhash_list:
+                    if isinstance(simhash_cache, bytes):
+                        simhash_cache = simhash_cache.decode()
 
-            for simhash_cache in simhash_list:
-                if isinstance(simhash_cache, bytes):
-                    simhash_cache = simhash_cache.decode()
-                # print(simhash_cache)
-                try:
-                    sim2, obj_id = simhash_cache.split(',', 1)
-                    _sim2 = Simhash(int(sim2, 16), self.hashbits)
+                    try:
+                        sim2, obj_id = simhash_cache.split(',', 1)
+                        _sim2 = Simhash(int(sim2, 16), self.hashbits)
 
-                    _sim1 = HammingDistance(simhash)
-                    d = _sim1.distance(_sim2)
+                        _sim1 = HammingDistance(simhash)
+                        d = _sim1.distance(_sim2)
 
-                    if d < k:
-                        ans.add(obj_id)
-                except Exception as e:
-                    logging.warning('not exists {}'.format(e))
+                        if d < k:
+                            ans.add(obj_id)
+                    except Exception as e:
+                        self.log.warning('Not exists {}'.format(e))
         return list(ans)
 
-    def query_simhash_cache(self, obj_id):
-        """Find similar objects by obj_id"""
-        simhash_caches = self.simhash_inverted_index.objects.filter(obj_id__contains=obj_id)
-        return simhash_caches
-
     def find_similiar(self, obj_id):
+        """Find similar objects by obj_id"""
         simhash_caches = self.simhash_inverted_index.objects.filter(obj_id__contains=obj_id)
         return simhash_caches
 
@@ -133,14 +140,14 @@ class SimhashIndexWithRedis(object):
         elif isinstance(simhash, Simhash):
             simhash = simhash
         else:
-            logging.warning('simhash not str or an instance of Simhash')
+            self.log.warning('simhash not str or an instance of Simhash')
             pass
 
         # delete simhash in mongodb
         try:
             self.simhash_inverted_index.objects(obj_id=obj_id).delete()
         except:
-            pass
+            self.log.warning('Delete obj_id {} wrong'.format(obj_id))
         # delete simhash in redis
         for key in self.get_keys(simhash):
             v = '{:x},{}'.format(simhash.fingerprint, obj_id)
@@ -189,7 +196,10 @@ class SimhashIndexWithRedis(object):
         return self.redis.status
 
 if __name__ == '__main__':
-    # s = SimhashIndexWithRedis(SimhashInvertedIndex, SimhashRedis())
+    from db.simhash_redis import SimhashRedis
+    sim = Simhash(int('ab2f0faeeabf5e4a', 16))
+    s = SimhashIndexWithRedis(SimhashInvertedIndex, SimhashRedis())
+    print(s.get_near_dups(sim))
     # import random
     # import string
     # for i in range(100):
@@ -203,13 +213,13 @@ if __name__ == '__main__':
     #     print(s.bucket_size)
     # a = s.redis.get('a903:2')
     # print(a)
-    s = SimhashInvertedIndex
-    for i in s.objects(obj_id='1491824535189884', key='4d9d:3'):
-        add_time = i.add_time
-        print(add_time)
-        update_time = datetime.datetime.now()
-        i.update_time = update_time
-        i.last_days = (update_time - add_time).days
-        if i.last_days == 0:
-            i.delete()
-        i.save()
+    # s = SimhashInvertedIndex
+    # for i in s.objects(obj_id='1491824535189884', key='4d9d:3'):
+    #     add_time = i.add_time
+    #     print(add_time)
+    #     update_time = datetime.datetime.now()
+    #     i.update_time = update_time
+    #     i.last_days = (update_time - add_time).days
+    #     if i.last_days == 0:
+    #         i.delete()
+    #     i.save()

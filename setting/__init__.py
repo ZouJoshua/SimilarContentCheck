@@ -13,7 +13,7 @@ from os.path import dirname
 sys.path.append(dirname(os.path.realpath(__file__)))
 
 
-# MongoDB
+# MongoDB setting
 simhash_mongodb_config = {
     'name': 'simhash',
     'username': '',
@@ -23,12 +23,13 @@ simhash_mongodb_config = {
     'alias': 'simhash',
 }
 
-# Reids
+# Reids setting
 REDIS_HOST = '127.0.0.1'
 REDIS_PORT = 6379
-# REDIS_URL = None
 SAVE_DAYS = 30
+# REDIS_URL = None
 
+# Log setting
 PROJECT_ROOT = dirname(dirname(dirname(os.path.abspath(__file__)))).replace('\\', '/')
 LOG_PATH = PROJECT_ROOT + '/logs/'
 if not os.path.exists(LOG_PATH):

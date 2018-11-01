@@ -17,7 +17,7 @@ import time
 from mongoengine import register_connection
 from setting import simhash_mongodb_config
 from mongoengine import Document, IntField
-from mongoengine import StringField, DateTimeField
+from mongoengine import StringField
 
 register_connection(**simhash_mongodb_config)
 
@@ -90,4 +90,4 @@ if __name__ == '__main__':
     #     objs.append((i['obj_id']))
     # print(objs)
     # SimhashInvertedIndex.objects(obj_id='test1').delete()
-    print(type(SimhashInvertedIndex))
+    SimhashInvertedIndex.delete()

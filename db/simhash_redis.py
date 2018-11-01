@@ -40,7 +40,7 @@ class SimhashRedis(object):
         timeline = now - 3600 * 24 * SAVE_DAYS
         self.redis.zremrangebyscore(name, 0, timeline)
         # print(self.redis.zrangebyscore(name, 0, timeline))
-        return self.redis.zrange(name, timeline, now)
+        return self.redis.zrangebyscore(name, timeline, now)
 
 
     def get_num(self,name):
@@ -71,8 +71,7 @@ if __name__ == '__main__':
     redis.add('x1', 1540980746, 'test2')
     redis.add('x1', 1540980726, 'test3')
 
-    for key in redis.redis.keys(pattern='*'):
+    for key in redis.redis.keys(pattern='*')[:100]:
         print(key)
         s = redis.get_values(key)
         print(s)
-

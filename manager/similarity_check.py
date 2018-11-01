@@ -14,7 +14,7 @@ sys.path.append(dirname(dirname(os.path.realpath(__file__))))
 
 import time
 
-from db.simhash_mongo import SimhashInvertedIndex, get_all_simhash, get_simhash_count
+from db.simhash_mongo import SimhashInvertedIndex, get_all_simhash
 from db.simhash_redis import SimhashRedis
 from extract_features.extract_features_participle import Participle
 from extract_features.extract_features_tfidf import get_keywords_tfidf
@@ -22,29 +22,36 @@ from fingerprints_calculation.simhash import Simhash
 from fingerprints_storage.simhash_index_redis import SimhashIndexWithRedis
 from setting import PROJECT_LOG_FILE
 from utils.logger import Logger
+import logging
 
 logger = Logger('simhash', log2console=False, log2file=True, logfile=PROJECT_LOG_FILE).get_logger()
 
 class InitDB(object):
     """Init db and data"""
-    def __init__(self):
+    def __init__(self, load_data_from_mongo_to_redis=True, logger=None):
 
+        if logger is None:
+            self.log = logging.getLogger("simhash")
+        else:
+            self.log = logger
         self.redis = SimhashRedis()
-        self.simhash_inverted_index = SimhashInvertedIndex
+        self.mongo = SimhashInvertedIndex
 
-        self.invert_index = self.simhash_inverted_index.objects.first()
+        self.invert_index = self.mongo.objects.first()
         if not self.invert_index:
             self.redis.flushdb()
-            self.siwr = SimhashIndexWithRedis(self.simhash_inverted_index, self.redis)
-            logger.info("Initializing Redis...")
+            self.log.info('Initializing Redis...')
         else:
             s4 = time.clock()
-            self.redis.flushdb()
-            for i in self.get_inverted_index_from_mongodb(self.simhash_inverted_index):
-                self.redis.add(i[2], i[1], i[3])
-            self.siwr = SimhashIndexWithRedis(self.simhash_inverted_index, self.redis)
-            s5 = time.clock()
-            logger.info("Loading data from MongoDB to Redis...{}s".format(s5-s4))
+            if not load_data_from_mongo_to_redis:
+                self.redis.flushdb()
+                for i in self.get_inverted_index_from_mongodb(self.mongo):
+                    self.redis.add(i[2], i[1], i[3])
+                s5 = time.clock()
+                self.log.info('Loading data from MongoDB to Redis...{}s'.format(s5-s4))
+            self.log.info('Loading data from redis rdb to Redis...')
+
+        self.siwr = SimhashIndexWithRedis(self.mongo, self.redis, logger=self.log)
 
     @staticmethod
     def get_inverted_index_from_mongodb(db):
@@ -54,10 +61,15 @@ class InitDB(object):
 
 class Check(object):
     """main function"""
-    def __init__(self, text_id, text, siwr):
+    def __init__(self, text_id, text, siwr, logger=None):
         self.text_id = text_id
         self.text = text
         self.siwr = siwr
+
+        if logger is None:
+            self.log = logging.getLogger("simhash")
+        else:
+            self.log = logger
 
     def _extract_features(self, func='participle'):
 
@@ -75,52 +87,61 @@ class Check(object):
         s1 = time.clock()
         keywords = self._extract_features()
         s2 = time.clock()
-        logger.info('Text_id:{} Word segmentation time...{}s'.format(self.text_id, (s2 - s1)))
+        self.log.info('Text_id:{} Word segmentation time...{}s'.format(self.text_id, (s2 - s1)))
         simhash = Simhash(keywords)
         s3 = time.clock()
-        logger.info('Text_id:{} Calculate fingerprint time...{}s'.format(self.text_id, (s3 - s2)))
+        self.log.info('Text_id:{} Calculate fingerprint time...{}s'.format(self.text_id, (s3 - s2)))
         s6 = time.clock()
         dups_list = self.siwr.get_near_dups(simhash)
         s7 = time.clock()
-        logger.info('Text_id:{} Find time...{}s'.format(self.text_id, (s7-s6)))
+        self.log.info('Text_id:{} Find time...{}s'.format(self.text_id, (s7-s6)))
         self.siwr.add(obj_id=self.text_id, simhash=simhash)
-        logger.info('Text_id:{} Add to db...'.format(self.text_id))
+        self.log.info('Text_id:{} Add to db...'.format(self.text_id))
 
         return dups_list, self.siwr
 
+class UpdateDB(object):
 
-def update_db(init_db, keep_days=15):
+    def __init__(self, logger=None):
+        self.redis = SimhashRedis()
 
-    return _check_mongodb(init_db, keep_days=keep_days)
+        if logger is None:
+            self.log = logging.getLogger("simhash")
+        else:
+            self.log = logger
 
-def _check_mongodb(init_db, keep_days=30):
-    logger.info('Updating database...')
-    redis = SimhashRedis()
-    logger.info('Redis has {} keys'.format(redis.status))
+    def update_db(self, init_db, keep_days=15):
 
-    redis.flushdb()
-    logger.info('Now redis have been cleaned {} keys'.format(redis.status))
+        return self._check_mongodb(init_db, keep_days=keep_days)
 
-    s = time.time()
-    f_mongo = init_db.get_inverted_index_from_mongodb(SimhashInvertedIndex)
-    _e1 = time.time()
-    logger.info('Reading database time...{}s'.format(_e1 - s))
-    for fingerprint in f_mongo:
-        init_db.siwr.update(fingerprint[0])
-    _e2 = time.time()
-    logger.info('Update date time...{}s'.format(_e2 - _e1))
-    f_mongo_new = init_db.get_inverted_index_from_mongodb(SimhashInvertedIndex)
-    for fingerprint in f_mongo_new:
-        if fingerprint[1] >= keep_days:
-            init_db.siwr.delete(obj_id=fingerprint[0], simhash=fingerprint[3].split(',')[0])
-    _e3 = time.time()
-    logger.info('Delete timeout data time...{}s'.format(_e3 - _e2))
-    f_mongo_update = init_db.get_inverted_index_from_mongodb(SimhashInvertedIndex)
-    for fingerprint in f_mongo_update:
-        redis.add(fingerprint[2], fingerprint[3])
-    _e = time.time()
-    logger.info('Time-consuming data after loading updates...{}s'.format(_e - _e3))
-    return init_db
+    def _check_mongodb(self, init_db, keep_days=30):
+        self.log.info('Updating database...')
+
+        self.log.info('Redis has {} keys'.format(self.redis.status))
+
+        self.redis.flushdb()
+        self.log.info('Now redis have been cleaned {} keys'.format(self.redis.status))
+
+        s = time.time()
+        f_mongo = init_db.get_inverted_index_from_mongodb(SimhashInvertedIndex)
+        _e1 = time.time()
+        self.log.info('Reading database time...{}s'.format(_e1 - s))
+        for fingerprint in f_mongo:
+            init_db.siwr.update(fingerprint[0])
+        _e2 = time.time()
+        self.log.info('Update date time...{}s'.format(_e2 - _e1))
+        f_mongo_new = init_db.get_inverted_index_from_mongodb(SimhashInvertedIndex)
+        for fingerprint in f_mongo_new:
+            if fingerprint[1] >= keep_days:
+                init_db.siwr.delete(obj_id=fingerprint[0], simhash=fingerprint[3].split(',')[0])
+        _e3 = time.time()
+        self.log.info('Delete timeout data time...{}s'.format(_e3 - _e2))
+        f_mongo_update = init_db.get_inverted_index_from_mongodb(SimhashInvertedIndex)
+        for fingerprint in f_mongo_update:
+            self.redis.add(fingerprint[2], fingerprint[3])
+        _e = time.time()
+        self.log.info('Time-consuming data after loading updates...{}s'.format(_e - _e3))
+        return init_db
 
 if __name__ == '__main__':
     import json
@@ -129,7 +150,7 @@ if __name__ == '__main__':
     def get_task(task_queue, filepath):
         with open(filepath, encoding='utf-8') as f:
             lines = f.readlines()
-            for line in lines[:20000]:
+            for line in lines[200000:]:
                 d = json.loads(line)
                 text_id = d['resource_id']
                 text = d['html']
@@ -182,5 +203,5 @@ if __name__ == '__main__':
     result_queue = Queue()
     queue = get_task(task_queue, filepath)
     print(queue.qsize())
-    work_with_mongo_redis(queue, result_queue)
-    # work_with_redis(queue, result_queue)
+    # work_with_mongo_redis(queue, result_queue)
+    work_with_redis(queue, result_queue)

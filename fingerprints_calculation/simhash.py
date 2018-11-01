@@ -67,7 +67,7 @@ class Simhash(object):
         elif isinstance(value, numbers.Integral):
             self.fingerprint = value
         else:
-            raise Exception('Bad parameter with type {}'.format(type(value)))
+            self.log.warning('Bad parameter with type {}'.format(type(value)))
 
     def _hashfunc(self, x):
         # Generate hash value with hashlib.md5
