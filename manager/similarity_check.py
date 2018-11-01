@@ -7,9 +7,10 @@
 @Desc    : main
 """
 
-import sys
 import os
+import sys
 from os.path import dirname
+
 sys.path.append(dirname(dirname(os.path.realpath(__file__))))
 
 import time
@@ -24,7 +25,7 @@ from setting import PROJECT_LOG_FILE
 from utils.logger import Logger
 import logging
 
-logger = Logger('simhash', log2console=False, log2file=True, logfile=PROJECT_LOG_FILE).get_logger()
+logger = Logger('simhash', log2console=True, log2file=True, logfile=PROJECT_LOG_FILE).get_logger()
 
 class InitDB(object):
     """Init db and data"""
@@ -102,46 +103,45 @@ class Check(object):
 
 class UpdateDB(object):
 
-    def __init__(self, logger=None):
-        self.redis = SimhashRedis()
+    def __init__(self, db, logger=None):
+        self.now = int(time.time())
+        if isinstance(db, InitDB):
+            self.db = db
+            self.redis = db.redis
+            self.mongo = db.mongo
+        else:
+            raise Exception('Wrong type of db...')
 
         if logger is None:
             self.log = logging.getLogger("simhash")
         else:
             self.log = logger
 
-    def update_db(self, init_db, keep_days=15):
+    def update_db(self, keep_days=15):
 
-        return self._check_mongodb(init_db, keep_days=keep_days)
+        return self._check_mongodb(keep_days=keep_days)
 
-    def _check_mongodb(self, init_db, keep_days=30):
+    def _check_mongodb(self, keep_days=30):
         self.log.info('Updating database...')
 
         self.log.info('Redis has {} keys'.format(self.redis.status))
 
         self.redis.flushdb()
         self.log.info('Now redis have been cleaned {} keys'.format(self.redis.status))
-
-        s = time.time()
-        f_mongo = init_db.get_inverted_index_from_mongodb(SimhashInvertedIndex)
-        _e1 = time.time()
-        self.log.info('Reading database time...{}s'.format(_e1 - s))
-        for fingerprint in f_mongo:
-            init_db.siwr.update(fingerprint[0])
+        timeline = self.now - keep_days * 3600 * 24
+        # timeline = self.now - 400
         _e2 = time.time()
-        self.log.info('Update date time...{}s'.format(_e2 - _e1))
-        f_mongo_new = init_db.get_inverted_index_from_mongodb(SimhashInvertedIndex)
-        for fingerprint in f_mongo_new:
-            if fingerprint[1] >= keep_days:
-                init_db.siwr.delete(obj_id=fingerprint[0], simhash=fingerprint[3].split(',')[0])
+        for i in self.mongo.objects(add_time__lte=timeline):
+            i.delete()
+            i.save()
         _e3 = time.time()
-        self.log.info('Delete timeout data time...{}s'.format(_e3 - _e2))
-        f_mongo_update = init_db.get_inverted_index_from_mongodb(SimhashInvertedIndex)
+        self.log.info('Delete timeout data takes...{}s'.format(_e3 - _e2))
+        f_mongo_update = self.db.get_inverted_index_from_mongodb(self.mongo)
         for fingerprint in f_mongo_update:
-            self.redis.add(fingerprint[2], fingerprint[3])
+            self.redis.add(fingerprint[2], fingerprint[1], fingerprint[3])
         _e = time.time()
         self.log.info('Time-consuming data after loading updates...{}s'.format(_e - _e3))
-        return init_db
+        return self.db
 
 if __name__ == '__main__':
     import json
@@ -158,9 +158,9 @@ if __name__ == '__main__':
         return task_queue
 
     def work_with_mongo_redis(task_queue, result_queue):
-        init_db = InitDB()
-        UPDATE_FREQUENCY = 360000
-        start = time.time()
+        _db = InitDB(load_data_from_mongo_to_redis=False, logger=logger)
+        init_db= UpdateDB(db=_db, logger=logger).update_db()
+        print(init_db)
         i = 0
         while True:
 
@@ -170,12 +170,10 @@ if __name__ == '__main__':
                 text_id, text = item
                 dups_list, _db = Check(text_id, text, init_db.siwr).check_similarity()
                 result_queue.put({text_id: dups_list})
+                print({text_id: dups_list})
                 # init_db.siwr = _db
                 # if i > 10000:
                 #     break
-                if time.time() - start > UPDATE_FREQUENCY:
-                    init_db = update_db(init_db)
-                    start = time.time()
             else:
                 print('队列没任务')
                 break
@@ -185,23 +183,26 @@ if __name__ == '__main__':
 
     def work_with_redis(task_queue, result_queue):
 
-        siwr = SimhashIndexWithRedis(SimhashInvertedIndex, SimhashRedis())
+        init_db = InitDB(logger=logger)
         while True:
 
             if task_queue.qsize():
                 item = task_queue.get()
                 text_id, text = item
-                dups_list, _db = Check(text_id, text, siwr).check_similarity()
-                print(dups_list)
+                dups_list, _db = Check(text_id, text, init_db.siwr,logger=logger).check_similarity()
+                print({text_id: dups_list})
                 result_queue.put({text_id: dups_list})
             else:
                 print('队列没任务')
                 break
 
-    filepath = r'C:\Users\zoushuai\Desktop\new1_json\part-00006'
+    filepath = r'C:\Users\ZS\Desktop\new1_json\part-00006'
     task_queue = Queue()
     result_queue = Queue()
     queue = get_task(task_queue, filepath)
     print(queue.qsize())
-    # work_with_mongo_redis(queue, result_queue)
-    work_with_redis(queue, result_queue)
+    work_with_mongo_redis(queue, result_queue)
+    # work_with_redis(queue, result_queue)
+    # db = InitDB(logger=logger)
+    # update = UpdateDB(db=db, logger=logger).update_db()
+    # print(update)
