@@ -49,6 +49,64 @@ class SimhashIndexWithRedis(object):
                     self.log.info('{}/{}'.format(i + 1, count))
                 self.add(*q)
 
+    def add(self, obj_id, simhash):
+        return self._insert(obj_id=obj_id, value=simhash)
+
+    def update(self, obj_id):
+        if self.simhash_inverted_index.objects(obj_id=obj_id):
+            for row in self.simhash_inverted_index.objects(obj_id=obj_id):
+                add_time = row.add_time
+                update_time = int(time.time())
+                last_days = (update_time - add_time) // 3600*24
+                if last_days > SAVE_DAYS:
+                    row.delete()
+                row.save()
+        return
+
+    def delete(self, obj_id, simhash):
+        """
+        Args:
+            obj_id: a string
+            simhash: an instance of Simhash or str
+        """
+        if isinstance(simhash, str):
+            simhash = Simhash(value=simhash, hashbits=self.hashbits)
+        elif isinstance(simhash, Simhash):
+            simhash = simhash
+        else:
+            self.log.warning('simhash not str or an instance of Simhash')
+            pass
+
+        # delete simhash in mongodb
+        try:
+            self.simhash_inverted_index.objects(obj_id=obj_id).delete()
+        except:
+            self.log.warning('Delete obj_id {} wrong'.format(obj_id))
+        # delete simhash in redis
+        for key in self.get_keys(simhash):
+            v = '{:x},{}'.format(simhash.fingerprint, obj_id)
+            self.redis.delete(name=key, value=v)
+        return
+
+    def get_near_dups(self, simhash):
+        """
+        Args:
+            simhash: an instance of Simhash
+        Returns:
+            return a list of obj_id, which is in type of str
+        """
+        return self._find(simhash, self.k)
+
+    def get_keys(self, simhash):
+        for i, offset in enumerate(self.offsets):
+            # m = (i == len(self.offsets) - 1 and 2 ** (self.hashbits - offset) - 1 or 2 ** (self.offsets[i + 1] - offset) - 1)
+            if i == len(self.offsets) - 1:
+                m = 2 ** (self.hashbits - offset) - 1
+            else:
+                m = 2 ** (self.offsets[i + 1] - offset) - 1
+            c = simhash.fingerprint >> offset & m
+            yield '{:x}:{:x}'.format(c, i)
+
     def _insert(self, obj_id=None, value=None):
         """Insert hash value into mongodb and redis
             data can  be text,{obj_id,text},  {obj_id,simhash}
@@ -128,64 +186,6 @@ class SimhashIndexWithRedis(object):
         """Find similar objects by obj_id"""
         simhash_caches = self.simhash_inverted_index.objects.filter(obj_id__contains=obj_id)
         return simhash_caches
-
-    def delete(self, obj_id, simhash):
-        """
-        Args:
-            obj_id: a string
-            simhash: an instance of Simhash or str
-        """
-        if isinstance(simhash, str):
-            simhash = Simhash(value=simhash, hashbits=self.hashbits)
-        elif isinstance(simhash, Simhash):
-            simhash = simhash
-        else:
-            self.log.warning('simhash not str or an instance of Simhash')
-            pass
-
-        # delete simhash in mongodb
-        try:
-            self.simhash_inverted_index.objects(obj_id=obj_id).delete()
-        except:
-            self.log.warning('Delete obj_id {} wrong'.format(obj_id))
-        # delete simhash in redis
-        for key in self.get_keys(simhash):
-            v = '{:x},{}'.format(simhash.fingerprint, obj_id)
-            self.redis.delete(name=key, value=v)
-        return
-
-    def add(self, obj_id, simhash):
-        return self._insert(obj_id=obj_id, value=simhash)
-
-    def update(self, obj_id):
-        if self.simhash_inverted_index.objects(obj_id=obj_id):
-            for row in self.simhash_inverted_index.objects(obj_id=obj_id):
-                add_time = row.add_time
-                update_time = int(time.time())
-                last_days = (update_time - add_time) // 3600*24
-                if last_days > SAVE_DAYS:
-                    row.delete()
-                row.save()
-        return
-
-    def get_near_dups(self, simhash):
-        """
-        Args:
-            simhash: an instance of Simhash
-        Returns:
-            return a list of obj_id, which is in type of str
-        """
-        return self._find(simhash, self.k)
-
-    def get_keys(self, simhash):
-        for i, offset in enumerate(self.offsets):
-            # m = (i == len(self.offsets) - 1 and 2 ** (self.hashbits - offset) - 1 or 2 ** (self.offsets[i + 1] - offset) - 1)
-            if i == len(self.offsets) - 1:
-                m = 2 ** (self.hashbits - offset) - 1
-            else:
-                m = 2 ** (self.offsets[i + 1] - offset) - 1
-            c = simhash.fingerprint >> offset & m
-            yield '{:x}:{:x}'.format(c, i)
 
     @property
     def offsets(self):

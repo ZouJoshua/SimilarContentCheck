@@ -18,8 +18,8 @@ class JaccardSim(object):
 
         """
 
-        seta = self.splitWords(str_a)[1]
-        setb = self.splitWords(str_b)[1]
+        seta = str_a[1]
+        setb = str_b[1]
 
         sa_sb = 1.0 * len(seta & setb) / len(seta | setb)
 

@@ -69,30 +69,6 @@ class Simhash(object):
         else:
             self.log.warning('Bad parameter with type {}'.format(type(value)))
 
-    def _hashfunc(self, x):
-        # Generate hash value with hashlib.md5
-        return int(hashlib.md5(x).hexdigest(), 16)
-
-    def _hashfunc_builtin(self, x):
-        # Generate hash value with builtin function hash
-        hashcode = bin(hash(x)).replace('0b', '').replace('-', '').zfill(self.hashbits)[-self.hashbits:]
-        return hashcode
-
-    def _slide(self, content, width=4):
-        return [content[i:i + width] for i in range(max(len(content) - width + 1, 1))]
-
-    def _tokenize(self, content):
-        content = content.lower()
-        content = ''.join(re.findall(self.reg, content))
-        ans = self._slide(content)
-        return ans
-
-    def build_by_text(self, content):
-        features = self._tokenize(content)
-        features = {k: sum(1 for _ in g) for k, g in groupby(features)}
-        # features = {k: sum(1 for _ in g) for k, g in groupby(sorted(features))}
-        return self.build_by_features(features)
-
     def build_by_features(self, features):
         """
         Args:
@@ -120,6 +96,31 @@ class Simhash(object):
                 _fingerprint |= masks[i]
         #         _fingerprint += 1 << i
         self.fingerprint = _fingerprint
+
+    def build_by_text(self, content):
+        features = self._tokenize(content)
+        features = {k: sum(1 for _ in g) for k, g in groupby(features)}
+        # features = {k: sum(1 for _ in g) for k, g in groupby(sorted(features))}
+        return self.build_by_features(features)
+
+    def _hashfunc(self, x):
+        # Generate hash value with hashlib.md5
+        return int(hashlib.md5(x).hexdigest(), 16)
+
+    def _hashfunc_builtin(self, x):
+        # Generate hash value with builtin function hash
+        hashcode = bin(hash(x)).replace('0b', '').replace('-', '').zfill(self.hashbits)[-self.hashbits:]
+        return hashcode
+
+    def _slide(self, content, width=4):
+        return [content[i:i + width] for i in range(max(len(content) - width + 1, 1))]
+
+    def _tokenize(self, content):
+        content = content.lower()
+        content = ''.join(re.findall(self.reg, content))
+        ans = self._slide(content)
+        return ans
+
 
 
 if __name__ == '__main__':
