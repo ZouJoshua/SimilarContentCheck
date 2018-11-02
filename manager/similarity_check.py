@@ -150,7 +150,7 @@ if __name__ == '__main__':
     def get_task(task_queue, filepath):
         with open(filepath, encoding='utf-8') as f:
             lines = f.readlines()
-            for line in lines[200000:]:
+            for line in lines[:2000]:
                 d = json.loads(line)
                 text_id = d['resource_id']
                 text = d['html']
@@ -189,20 +189,20 @@ if __name__ == '__main__':
             if task_queue.qsize():
                 item = task_queue.get()
                 text_id, text = item
-                dups_list, _db = Check(text_id, text, init_db.siwr,logger=logger).check_similarity()
+                dups_list, _db = Check(text_id, text, init_db.siwr, logger=logger).check_similarity()
                 print({text_id: dups_list})
                 result_queue.put({text_id: dups_list})
             else:
                 print('队列没任务')
                 break
 
-    filepath = r'C:\Users\ZS\Desktop\new1_json\part-00006'
+    filepath = r'C:\Users\zoushuai\Desktop\new1_json\part-00007'
     task_queue = Queue()
     result_queue = Queue()
     queue = get_task(task_queue, filepath)
     print(queue.qsize())
-    work_with_mongo_redis(queue, result_queue)
-    # work_with_redis(queue, result_queue)
+    # work_with_mongo_redis(queue, result_queue)
+    work_with_redis(queue, result_queue)
     # db = InitDB(logger=logger)
     # update = UpdateDB(db=db, logger=logger).update_db()
     # print(update)

@@ -83,11 +83,10 @@ def get_simhash_count(SimhashInvertedIndex):
     return len(list(SimhashInvertedIndex.objects.all()))
 
 if __name__ == '__main__':
-    # all = get_all_simhash(SimhashInvertedIndex)
+    all = get_all_simhash(SimhashInvertedIndex)
     # print(all)
     # objs = list()
     # for i in all:
     #     objs.append((i['obj_id']))
     # print(objs)
     # SimhashInvertedIndex.objects(obj_id='test1').delete()
-    SimhashInvertedIndex.delete()

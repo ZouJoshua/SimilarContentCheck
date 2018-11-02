@@ -8,8 +8,8 @@
 """
 
 import time
-from utils.logger import clogger, Logger
-
+from utils.logger import  Logger
+clogger = Logger('clogger', log2console=True, log2file=False).get_logger()
 
 class Timer(object):
     """Time calculator
