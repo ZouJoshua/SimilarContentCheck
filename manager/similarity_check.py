@@ -159,7 +159,7 @@ if __name__ == '__main__':
 
     def work_with_mongo_redis(task_queue, result_queue):
         _db = InitDB(load_data_from_mongo_to_redis=False, logger=logger)
-        init_db= UpdateDB(db=_db, logger=logger).update_db()
+        init_db = UpdateDB(db=_db, logger=logger).update_db()
         print(init_db)
         i = 0
         while True:

@@ -15,12 +15,12 @@ sys.path.append(dirname(os.path.realpath(__file__)))
 
 # MongoDB setting
 simhash_mongodb_config = {
-    'name': 'simhash',
+    'name': 'news',
     'username': '',
     'host': '127.0.0.1',
     'password': '',
     'port': 27017,
-    'alias': 'simhash',
+    'alias': 'news',
 }
 
 # Reids setting
