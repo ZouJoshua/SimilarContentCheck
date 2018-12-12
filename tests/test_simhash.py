@@ -17,6 +17,16 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 class TestSimhash(TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        print(">>>>>>>>>>测试环境已准备好！")
+        print(">>>>>>>>>>即将测试 Case ...")
+
+    @classmethod
+    def tearDownClass(cls):
+        print(">>>>>>>>>>Case 用例已测试完成 ...")
+        print(">>>>>>>>>>测试环境已清理完成！")
+
     def test_int_value(self):
         self.assertEqual(Simhash(0).fingerprint, 0)
         self.assertEqual(Simhash(4390059585430954713).fingerprint, 4390059585430954713)
@@ -28,29 +38,32 @@ class TestSimhash(TestCase):
     def test_distance(self):
         sh = Simhash('How are you? I AM fine. Thanks. And you?')
         sh2 = Simhash('How old are you ? :-) i am fine. Thanks. And you?')
-        self.assertTrue(sh.fingerprint(sh2) > 0)
+        self.assertTrue(HammingDistance(sh).distance(sh2) > 0)
 
         sh3 = Simhash(sh2)
-        self.assertEqual(sh2.fingerprint(sh3), 0)
+        self.assertEqual(HammingDistance(sh2).distance(sh3), 0)
 
-        self.assertNotEqual(Simhash('1').fingerprint(Simhash('2')), 0)
+        self.assertNotEqual(HammingDistance("1").distance(Simhash("2")), 0)
 
-    def test_chinese(self):
+    def test_long_article(self):
         self.maxDiff = None
 
-        sh1 = Simhash(u'你好　世界！　　呼噜。')
-        sh2 = Simhash(u'你好，世界　呼噜')
+        sh1 = Simhash("\nBengaluru: Software major Adobe is the best technology company to work for in India, followed by chip maker NVIDIA and Microsoft, employment-related search engine giant Indeed said on Tuesday.\nThe Indian Space Research Organization (ISRO) was the highest-ranked Indian organisation at No. 10 — the only public sector firm to feature on the top-15 list, titled “Top Rated Workplaces: Best in Tech” on the basis of over 100 million ratings and reviews available on Indeed.\n“In addition to strategic workplace programmes, companies that have focused on people management and contributed to creating a conducive environment for their employees have been highly-rated by job seekers,” Indeed India Managing Director Sashi Kumar said in a statement.\nThe top 10 tech companies included like SAP, Akamai Technologies, VMware, Cisco, Intel and Citrix Systems Inc.\nApple was at 13th place while HP was 11th on the list. Some of the other Indian companies that feature in the top 15 include e-commerce company Myntra and Tata Consultancy Services (TCS).\n“Other than competitive remuneration, companies that work to make their employees feel like they work with and not for the company, create a culture of ownership and instil a sense of loyalty in their employees,” Kumar added.")
+        sh2 = Simhash("\tSoftware major Adobe is the best technology company to work for in India, followed by chip maker NVIDIA and Microsoft, employment-related search engine giant Indeed said on Tuesday.\tThe Indian Space Research Organization (ISRO) was the highest-ranked Indian organisation at No. 10 -- the only public sector firm to feature on the top-15 list, titled \"Top Rated Workplaces: Best in Tech\" on the basis of over 100 million ratings and reviews available on Indeed.\t\"In addition to strategic workplace programmes, companies that have focused on people management and contributed to creating a conducive environment for their employees have been highly-rated by job seekers,\" Indeed India Managing Director Sashi Kumar said in a statement.\tThe top 10 tech companies included like SAP, Akamai Technologies, VMware, Cisco, Intel and Citrix Systems Inc.\tApple was at 13th place while HP was 11th on the list. Some of the other Indian companies that feature in the top 15 include e-commerce company Myntra and Tata Consultancy Services (TCS).\t\"Other than competitive remuneration, companies that work to make their employees feel like they work with and not for the company, create a culture of ownership and instil a sense of loyalty in their employees,\" Kumar added.\tRead more news:\tSaraswat Co-operative Bank, First to go Live on Whatsapp Channel from Co-operative Sector\tTrump commits to $750 bn defence budget\tead more news:\tSaraswat Co-operative Bank, First to go Live on Whatsapp Channel from Co-operative Sector\tTrump commits to $750 bn defence budget" )
 
-        sh4 = Simhash(u'How are you? I Am fine. ablar ablar xyz blar blar blar blar blar blar blar Thanks.')
-        sh5 = Simhash(u'How are you i am fine.ablar ablar xyz blar blar blar blar blar blar blar than')
-        sh6 = Simhash(u'How are you i am fine.ablar ablar xyz blar blar blar blar blar blar blar thank')
+        sh4 = Simhash('How are you? I Am fine. ablar ablar xyz blar blar blar blar blar blar blar Thanks.')
+        sh5 = Simhash('How are you i am fine.ablar ablar xyz blar blar blar blar blar blar blar than')
+        sh6 = Simhash('How are you i am fine.ablar ablar xyz blar blar blar blar blar blar blar thank')
 
-        self.assertEqual(HammingDistance(sh1).distance(sh2), 0)
+        print(HammingDistance(sh1).distance(sh2))
+        print(HammingDistance(sh4).distance(sh6))
+        print(HammingDistance(sh4).distance(sh5))
 
+        self.assertTrue(HammingDistance(sh1).distance(sh2) < 4)
         self.assertTrue(HammingDistance(sh4).distance(sh6) < 3)
         self.assertTrue(HammingDistance(sh5).distance(sh6) < 3)
 
-    def test_short(self):
+    def test_short_article(self):
         shs = [Simhash(s).fingerprint for s in ('aa', 'aaa', 'aaaa', 'aaaab', 'aaaaabb', 'aaaaabbb')]
 
         for i, sh1 in enumerate(shs):

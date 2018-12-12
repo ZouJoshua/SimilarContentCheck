@@ -18,7 +18,7 @@ from similarity_calculation.hamming_distance import HammingDistance
 
 class SimhashIndexWithRedis(object):
 
-    def __init__(self, simhashinvertedindex, redis, objs=(), hashbits=64, k=3, logger=None):
+    def __init__(self, simhashinvertedindex, redis, objs=(), hashbits=64, k=6, logger=None):
         """
         Args:
             redis: an instance of redis
@@ -27,6 +27,7 @@ class SimhashIndexWithRedis(object):
                 obj_id is a string, simhash is an instance of Simhash
             hashbits: the same with the one for Simhash
             k: the tolerance
+            # TODO: 根据实际情况修改两篇相似文章间的距离
             logger:  an instance of Logger
         """
         if logger is None:

@@ -6,6 +6,7 @@
 @File    : hamming_distance.py
 @Desc    : hamming distance
 """
+from fingerprints_calculation.simhash import Simhash
 
 class HammingDistance(object):
 
@@ -15,8 +16,13 @@ class HammingDistance(object):
              simhash: an instance of Simhash
              hashbits: the dimensions of fingerprint
         """
-        self.simhash = simhash
+        if isinstance(simhash, Simhash):
+            self.simhash = simhash
+        else:
+            self.simhash = Simhash(simhash)
+
         self.hashbits = hashbits
+
 
     def distance(self, another_fingerprint):
         assert self.hashbits == another_fingerprint.hashbits

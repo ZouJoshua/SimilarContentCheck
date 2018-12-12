@@ -17,11 +17,11 @@ import numbers
 import collections
 from itertools import groupby
 
-if sys.version_info[0] >= 3: # python3
+if sys.version_info[0] >= 3:  # python3
     basestring = str
     unicode = str
     long = int
-else: # python2
+else:  # python2
     import xrange
     range = xrange
 
@@ -113,6 +113,7 @@ class Simhash(object):
         return hashcode
 
     def _slide(self, content, width=4):
+        # TODO: 调整切片量
         return [content[i:i + width] for i in range(max(len(content) - width + 1, 1))]
 
     def _tokenize(self, content):

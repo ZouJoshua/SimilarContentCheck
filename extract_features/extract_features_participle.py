@@ -39,7 +39,8 @@ class Participle(object):
             _text = text.translate(remove_punctuation_map)
         return _text
 
-    def _slice(self, content, width=3):
+    def _slice(self, content, width=4):
+        # TODO: 调整切片量
         return [content[i:i + width] for i in range(max(len(content) - width + 1, 1))]
 
 
