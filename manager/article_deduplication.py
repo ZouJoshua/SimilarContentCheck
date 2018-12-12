@@ -51,12 +51,50 @@ def work_with_redis(task_queue, file):
                 print('队列没任务')
                 break
 
+def get_all_dups(datafile, outfile):
+    with open(outfile, 'w', encoding='utf-8') as outf:
+        with open(datafile, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+            for line in lines:
+                dict = json.loads(line)
+                for id, v in dict.items():
+                    if len(v):
+                        outline = json.dumps({id: v})
+                        print(outline)
+                        outf.write(outline)
+                        outf.write("\n")
+
+def get_dropid_file(resultfile, dropidfile):
+    id_set = set()
+    dups_set = set()
+    with open(resultfile, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+        for line in lines:
+            dict = json.loads(line.strip('\n'))
+            for k, v in dict.items():
+                id_set.add(k)
+                for i in v:
+                    dups_set.add(i)
+    both = id_set & dups_set
+    # print(len(id_set))
+    # print(len(dups_set))
+    print(len(both))
+    with open(dropidfile, 'w', encoding='utf-8') as jsonfile:
+        for dup in dups_set:
+            out = json.dumps({"article_id": dup, "dupmark": 0})
+            jsonfile.write(out)
+            jsonfile.write('\n')
+
 
 
 if __name__ == '__main__':
-    file = 'deduplication'
-    task_queue = Queue()
+    # file = 'deduplication'
+    # task_queue = Queue()
     outfile = 'dups.out'
-    queue = get_task(task_queue, file)
-    print(queue.qsize())
-    work_with_redis(queue, outfile)
+    # queue = get_task(task_queue, file)
+    # print(queue.qsize())
+    # work_with_redis(queue, outfile)
+    resultfile = 'dups.all'
+    # get_all_dups(outfile, resultfile)
+    dropidfile = 'dropdups'
+    get_dropid_file(resultfile, dropidfile)

@@ -49,7 +49,7 @@ class SimhashInvertedIndex(Document):
     # update_time = DateTimeField(default=int(time.time())
     # last_days = IntField(default=0)
     meta = {
-        'db_alias': 'simhash',
+        'db_alias': 'news',
         'strict': False,
         # 'index_background': True ,
         "collection": "simhash_invert_index",
