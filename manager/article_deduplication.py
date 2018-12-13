@@ -60,7 +60,7 @@ def get_all_dups(datafile, outfile):
                 for id, v in dict.items():
                     if len(v):
                         outline = json.dumps({id: v})
-                        print(outline)
+                        # print(outline)
                         outf.write(outline)
                         outf.write("\n")
 
@@ -89,12 +89,12 @@ def get_dropid_file(resultfile, dropidfile):
 
 if __name__ == '__main__':
     file = 'deduplication'
-    task_queue = Queue()
+    # task_queue = Queue()
     outfile = 'dups.out1'
-    queue = get_task(task_queue, file)
-    print(queue.qsize())
-    work_with_redis(queue, outfile)
-    # resultfile = 'dups.all1'
-    # get_all_dups(outfile, resultfile)
-    # dropidfile = 'dropdups1'
-    # get_dropid_file(resultfile, dropidfile)
+    # queue = get_task(task_queue, file)
+    # print(queue.qsize())
+    # work_with_redis(queue, outfile)
+    resultfile = 'dups.all1'
+    get_all_dups(outfile, resultfile)
+    dropidfile = 'dropdups1'
+    get_dropid_file(resultfile, dropidfile)
