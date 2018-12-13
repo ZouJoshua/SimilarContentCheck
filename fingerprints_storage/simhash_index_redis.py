@@ -18,7 +18,7 @@ from similarity_calculation.hamming_distance import HammingDistance
 
 class SimhashIndexWithRedis(object):
 
-    def __init__(self, simhashinvertedindex, redis, objs=(), hashbits=64, k=6, logger=None):
+    def __init__(self, simhashinvertedindex, redis, objs=(), hashbits=64, k=3, logger=None):
         """
         Args:
             redis: an instance of redis
@@ -27,7 +27,6 @@ class SimhashIndexWithRedis(object):
                 obj_id is a string, simhash is an instance of Simhash
             hashbits: the same with the one for Simhash
             k: the tolerance
-            # TODO: 根据实际情况修改两篇相似文章间的距离
             logger:  an instance of Logger
         """
         if logger is None:
@@ -36,6 +35,8 @@ class SimhashIndexWithRedis(object):
             self.log = logger
 
         self.k = k
+        # TODO: 根据实际情况修改两篇相似文章间的距离(默认距离为小于6，认为两篇文章重复)
+        self.distance = 7
         self.hashbits = hashbits
         # self.hash_type = hash_type
         self.redis = redis
@@ -96,7 +97,7 @@ class SimhashIndexWithRedis(object):
         Returns:
             return a list of obj_id, which is in type of str
         """
-        return self._find(simhash, self.k)
+        return self._find(simhash, self.distance)
 
     def get_keys(self, simhash):
         for i, offset in enumerate(self.offsets):
@@ -144,7 +145,7 @@ class SimhashIndexWithRedis(object):
                     pass
 
 
-    def _find(self, value, k=3):
+    def _find(self, value, distance=4):
         assert value != None
 
         if isinstance(value, str):
@@ -163,7 +164,7 @@ class SimhashIndexWithRedis(object):
             except:
                 self.log.warning('Wrong with getting values from redis')
             else:
-                if len(simhash_list) > 200:
+                if len(simhash_list) > 1000:
                     self.log.warning('Big bucket found. key:{}, len:{}'.format(key, len(simhash_list)))
 
                 for simhash_cache in simhash_list:
@@ -177,7 +178,7 @@ class SimhashIndexWithRedis(object):
                         _sim1 = HammingDistance(simhash)
                         d = _sim1.distance(_sim2)
 
-                        if d < k:
+                        if d < distance:
                             ans.add(obj_id)
                     except Exception as e:
                         self.log.warning('Not exists {}'.format(e))

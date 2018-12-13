@@ -38,6 +38,8 @@ def work_with_redis(task_queue, file):
     with open(file, 'w', encoding='utf-8') as f:
         while True:
             i += 1
+            if i % 10000 == 0:
+                print('已处理{}条数据'.format(i))
             if task_queue.qsize():
                 item = task_queue.get()
                 text_id, text = item
@@ -45,8 +47,6 @@ def work_with_redis(task_queue, file):
                 # print({text_id: dups_list})
                 f.write(json.dumps({text_id: dups_list}))
                 f.write('\n')
-                if i / 10000 == 0:
-                    print('已处理{}条数据'.format(i*10000))
             else:
                 print('队列没任务')
                 break
@@ -88,13 +88,13 @@ def get_dropid_file(resultfile, dropidfile):
 
 
 if __name__ == '__main__':
-    # file = 'deduplication'
-    # task_queue = Queue()
-    outfile = 'dups.out'
-    # queue = get_task(task_queue, file)
-    # print(queue.qsize())
-    # work_with_redis(queue, outfile)
-    resultfile = 'dups.all'
+    file = 'deduplication'
+    task_queue = Queue()
+    outfile = 'dups.out1'
+    queue = get_task(task_queue, file)
+    print(queue.qsize())
+    work_with_redis(queue, outfile)
+    # resultfile = 'dups.all1'
     # get_all_dups(outfile, resultfile)
-    dropidfile = 'dropdups'
-    get_dropid_file(resultfile, dropidfile)
+    # dropidfile = 'dropdups1'
+    # get_dropid_file(resultfile, dropidfile)
