@@ -15,7 +15,7 @@ import hashlib
 import logging
 import numbers
 import collections
-from itertools import groupby
+from extract_features.extract_features_participle import Participle
 
 if sys.version_info[0] >= 3:  # python3
     basestring = str
@@ -98,8 +98,7 @@ class Simhash(object):
         self.fingerprint = _fingerprint
 
     def build_by_text(self, content):
-        features = self._tokenize(content)
-        features = {k: sum(1 for _ in g) for k, g in groupby(features)}
+        features = Participle().get_text_feature(content)
         # features = {k: sum(1 for _ in g) for k, g in groupby(sorted(features))}
         return self.build_by_features(features)
 
@@ -112,15 +111,7 @@ class Simhash(object):
         hashcode = bin(hash(x)).replace('0b', '').replace('-', '').zfill(self.hashbits)[-self.hashbits:]
         return hashcode
 
-    def _slide(self, content, width=4):
-        # TODO: 调整切片量
-        return [content[i:i + width] for i in range(max(len(content) - width + 1, 1))]
 
-    def _tokenize(self, content):
-        content = content.lower()
-        content = ''.join(re.findall(self.reg, content))
-        ans = self._slide(content)
-        return ans
 
 
 
