@@ -89,7 +89,9 @@ class TestSimhash(TestCase):
         ]
         vec = TfidfVectorizer()
         D = vec.fit_transform(data)
+        print(D)
         voc = dict((i, w) for w, i in vec.vocabulary_.items())
+        print(voc)
 
         # Verify that distance between data[0] and data[1] is < than
         # data[2] and data[3]

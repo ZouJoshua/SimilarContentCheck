@@ -24,7 +24,7 @@ logger = Logger('simhash', log2console=False, log2file=True, logfile=PROJECT_LOG
 
 class ArticleDeduplication(object):
 
-    def __init__(self, dedupfile='deduplication', dups_all_file='dups.out', dups_file='dups.all1', drop_dups_file='dropdups.all'):
+    def __init__(self, dedupfile='deduplication', dups_all_file='dups.out', dups_file='dups.all', drop_dups_file='dropdups.all'):
         self.dedupfile = dedupfile
         self.task_queue = Queue()
         self.dups_all_file = dups_all_file
@@ -223,5 +223,10 @@ def get_diff_dropid(file):
 
 
 if __name__ == '__main__':
-    ad = ArticleDeduplication()
-    ad.get_distance()
+    dedupfile = '../../data/deduplication_17'
+    print(dedupfile)
+    dups_all_file = '../../data/dups.out_17_5'
+    dups_file = '../../data/dups.all'
+    drop_dups_file = '../../data/dropdups.all'
+    ad = ArticleDeduplication(dedupfile=dedupfile, dups_all_file=dups_all_file)
+    ad.get_deduplication()

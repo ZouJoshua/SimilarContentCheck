@@ -15,11 +15,11 @@ sys.path.append(dirname(_dirname))
 
 import time
 from mongoengine import register_connection
-from setting import simhash_mongodb_config
+from setting import SIMHASH_MONGODB_CONFIG, MONGODB_DATABASE, MONGODB_COLLECTION
 from mongoengine import Document, IntField
 from mongoengine import StringField
 
-register_connection(**simhash_mongodb_config)
+register_connection(**SIMHASH_MONGODB_CONFIG)
 
 # _retry = 0
 # _status = False
@@ -49,10 +49,10 @@ class SimhashInvertedIndex(Document):
     # update_time = DateTimeField(default=int(time.time())
     # last_days = IntField(default=0)
     meta = {
-        'db_alias': 'news',
+        'db_alias': MONGODB_DATABASE,
         'strict': False,
         # 'index_background': True ,
-        "collection": "simhash_invert_index",
+        "collection": MONGODB_COLLECTION,
         "indexes": [
             "key",
             "simhash_value_obj_id",

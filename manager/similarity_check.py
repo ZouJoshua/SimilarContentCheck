@@ -38,20 +38,23 @@ class InitDB(object):
         self.redis = SimhashRedis()
         self.mongo = SimhashInvertedIndex
 
-        self.invert_index = self.mongo.objects.first()
-        if not self.invert_index:
-            self.redis.flushdb()
-            self.log.info('Initializing Redis...')
-        else:
-            s4 = time.clock()
-            if not load_data_from_mongo_to_redis:
-                self.redis.flushdb()
-                for i in self.get_inverted_index_from_mongodb(self.mongo):
-                    self.redis.add(i[2], i[1], i[3])
-                s5 = time.clock()
-                self.log.info('Loading data from MongoDB to Redis...{}s'.format(s5-s4))
+        self.log.info('Checking data from Redis and MongoDB...')
+        if self.redis.count():
             self.log.info('Loading data from redis rdb to Redis...')
-
+        else:
+            self.invert_index = self.mongo.objects.first()
+            if not self.invert_index:
+                self.log.info('Initializing Redis and write data to MongoDB...')
+                self.redis.flushdb()
+            else:
+                s4 = time.clock()
+                if load_data_from_mongo_to_redis:
+                    self.redis.flushdb()
+                    for i in self.get_inverted_index_from_mongodb(self.mongo):
+                        self.redis.add(i[2], i[1], i[3])
+                    s5 = time.clock()
+                    self.log.info('Initializing Redis and Loading data from MongoDB to Redis...{}s'.format(s5-s4))
+                self.log.info('Do not load data from MongoDB, calculate new data to load into Redis, and synchronize to MongoDB')
         self.siwr = SimhashIndexWithRedis(self.mongo, self.redis, logger=self.log)
 
     @staticmethod
@@ -102,7 +105,7 @@ class Check(object):
         return dups_list, self.siwr
 
 class UpdateDB(object):
-
+    """update db"""
     def __init__(self, db, logger=None):
         self.now = int(time.time())
         if isinstance(db, InitDB):

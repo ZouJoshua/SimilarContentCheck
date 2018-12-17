@@ -14,13 +14,16 @@ sys.path.append(dirname(os.path.realpath(__file__)))
 
 
 # MongoDB setting
-simhash_mongodb_config = {
-    'name': 'news',
+MONGODB_DATABASE = 'news'
+MONGODB_COLLECTION = 'news17_simhash_invert_index'
+
+SIMHASH_MONGODB_CONFIG = {
+    'name': MONGODB_DATABASE,
     'username': '',
     'host': '127.0.0.1',
     'password': '',
     'port': 27017,
-    'alias': 'news',
+    'alias': MONGODB_DATABASE,
 }
 
 # Reids setting
@@ -29,12 +32,18 @@ REDIS_PORT = 6379
 SAVE_DAYS = 30
 # REDIS_URL = None
 
-# Log setting
+# project root path setting
 PROJECT_ROOT = dirname(dirname(dirname(os.path.abspath(__file__)))).replace('\\', '/')
+
+# Log setting
 LOG_PATH = PROJECT_ROOT + '/logs/'
 if not os.path.exists(LOG_PATH):
     os.mkdir(LOG_PATH)
 PROJECT_LOG_FILE = LOG_PATH + 'simhash.log'
+
+# data path setting
+DATA_PATH = PROJECT_ROOT + '/data/'
+
 
 if __name__ == '__main__':
     print(PROJECT_ROOT)
