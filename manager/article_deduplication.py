@@ -24,11 +24,11 @@ logger = Logger('simhash', log2console=False, log2file=True, logfile=PROJECT_LOG
 
 class ArticleDeduplication(object):
 
-    def __init__(self, dedupfile='deduplication', dups_all_file='dups.out', dups_file='dups.all', drop_dups_file='dropdups.all'):
+    def __init__(self, dedupfile='deduplication', dups_out_file='dups.out', dups_all_file='dups.all', drop_dups_file='dropdups.all'):
         self.dedupfile = dedupfile
         self.task_queue = Queue()
+        self.dups_out_file = dups_out_file
         self.dups_all_file = dups_all_file
-        self.dups_file = dups_file
         self.drop_dups_file = drop_dups_file
 
 
@@ -72,7 +72,7 @@ class ArticleDeduplication(object):
         """
         init_db = InitDB(logger=logger)
         i = 0
-        with open(self.dups_all_file, 'w', encoding='utf-8') as f:
+        with open(self.dups_out_file, 'w', encoding='utf-8') as f:
             while True:
                 i += 1
                 if i % 10000 == 0:
@@ -87,7 +87,7 @@ class ArticleDeduplication(object):
                 else:
                     print('队列没任务')
                     break
-        print('>>>>>>>>>>重复文章列表文件{}'.format(self.dups_all_file))
+        print('>>>>>>>>>>重复文章列表文件{}'.format(self.dups_out_file))
 
     def get_all_dups(self):
         """
@@ -96,18 +96,23 @@ class ArticleDeduplication(object):
         :param outfile:  重复列表非空重复文章文件
         :return: 重复列表非空重复文章文件
         """
-        with open(self.dups_file, 'w', encoding='utf-8') as outf:
-            with open(self.dups_all_file, 'r', encoding='utf-8') as f:
+        with open(self.dups_all_file, 'w', encoding='utf-8') as outf:
+            with open(self.dups_out_file, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
                 for line in lines:
                     dict = json.loads(line)
                     for id, v in dict.items():
                         if len(v):
-                            outline = json.dumps({id: v})
-                            # print(outline)
-                            outf.write(outline)
-                            outf.write("\n")
-        print('>>>>>>>>>>需删除的重复id集合的文件{}'.format(self.dups_file))
+                            d = list()
+                            for i in v:
+                                if i != id:
+                                    d.append(i)
+                            if len(d):
+                                outline = json.dumps({id: d})
+                                # print(outline)
+                                outf.write(outline)
+                                outf.write("\n")
+        print('>>>>>>>>>>需删除的重复id集合的文件{}'.format(self.dups_all_file))
 
     def get_dropid_file(self):
         """
@@ -118,7 +123,7 @@ class ArticleDeduplication(object):
         """
         id_set = set()
         dups_set = set()
-        with open(self.dups_file, 'r', encoding='utf-8') as f:
+        with open(self.dups_all_file, 'r', encoding='utf-8') as f:
             lines = f.readlines()
             for line in lines:
                 dict = json.loads(line.strip('\n'))
@@ -129,7 +134,7 @@ class ArticleDeduplication(object):
         both = id_set & dups_set
         # print(len(id_set))
         # print(len(dups_set))
-        print('>>>>>>>>>>需要删除的重复id长度{}'.format(len(both)))
+        print('>>>>>>>>>>需要删除的重复id长度{}'.format(len(dups_set)))
         with open(self.drop_dups_file, 'w', encoding='utf-8') as jsonfile:
             for dup in dups_set:
                 out = json.dumps({"article_id": dup, "dupmark": 0})
@@ -138,7 +143,7 @@ class ArticleDeduplication(object):
 
     def get_deduplication_article(self, only_dedup='deduplication_only'):
         all_dups = list()
-        with open(self.dups_file, 'r', encoding='utf-8') as f:
+        with open(self.dups_all_file, 'r', encoding='utf-8') as f:
             lines = f.readlines()
             for line in lines:
                 line_json = json.loads(line.strip('\n'))
@@ -162,7 +167,7 @@ class ArticleDeduplication(object):
     def get_distance(self):
         all_dups_article = self.get_article_dict('deduplication_only')
         with open("dups.all.distance1", "w", encoding="utf-8") as f:
-            with open(self.dups_file, "r", encoding="utf-8") as df:
+            with open(self.dups_all_file, "r", encoding="utf-8") as df:
                 lines = df.readlines()
                 print('>>>>>>>>>>正在处理{}重复文章'.format(len(lines)))
                 m = 0
@@ -182,8 +187,6 @@ class ArticleDeduplication(object):
                         dups["distance"] = distance
                         f.write(json.dumps(dups))
                         f.write('\n')
-
-
 
     @staticmethod
     def get_article_dict(dedupfile):
@@ -225,8 +228,8 @@ def get_diff_dropid(file):
 if __name__ == '__main__':
     dedupfile = '../../data/deduplication_17'
     print(dedupfile)
-    dups_all_file = '../../data/dups.out_17_5'
-    dups_file = '../../data/dups.all'
-    drop_dups_file = '../../data/dropdups.all'
-    ad = ArticleDeduplication(dedupfile=dedupfile, dups_all_file=dups_all_file)
-    ad.get_deduplication()
+    dups_out_file = '../../data/dups.out_17_5'
+    dups_all_file = '../../data/dups.all_17_5'
+    drop_dups_file = '../../data/dropdups.all_17_5'
+    ad = ArticleDeduplication(dedupfile=dedupfile, dups_out_file=dups_out_file, dups_all_file=dups_all_file, drop_dups_file=drop_dups_file)
+    ad.get_dropid_file()
