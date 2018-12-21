@@ -15,7 +15,7 @@ sys.path.append(dirname(os.path.realpath(__file__)))
 
 # MongoDB setting
 MONGODB_DATABASE = 'news'
-MONGODB_COLLECTION = 'news17_simhash_invert_index'
+MONGODB_COLLECTION = 'news150_simhash_invert_index'
 
 SIMHASH_MONGODB_CONFIG = {
     'name': MONGODB_DATABASE,
@@ -39,7 +39,7 @@ PROJECT_ROOT = dirname(dirname(dirname(os.path.abspath(__file__)))).replace('\\'
 LOG_PATH = PROJECT_ROOT + '/logs/'
 if not os.path.exists(LOG_PATH):
     os.mkdir(LOG_PATH)
-PROJECT_LOG_FILE = LOG_PATH + 'simhash.log'
+PROJECT_LOG_FILE = LOG_PATH + 'simhash150.log'
 
 # data path setting
 DATA_PATH = PROJECT_ROOT + '/data/'

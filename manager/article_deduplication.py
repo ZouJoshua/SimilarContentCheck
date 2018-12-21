@@ -45,14 +45,14 @@ class ArticleDeduplication(object):
         :param filepath: 去重文章文件
         :return: 任务队列
         """
-        with open(self.dedupfile, encoding='utf-8') as f:
+        with open(self.dedupfile, 'r', encoding='utf-8') as f:
             lines = f.readlines()
             for line in lines:
-                dict = json.loads(line)
+                dict = json.loads(line.strip('\n'))
                 text_id = dict['article_id']
-                text = self.clean_html(dict['content'])
+                text = self.clean_html(dict['article'])
                 self.task_queue.put((text_id, text))
-        return self.task_queue
+            return self.task_queue
 
     @staticmethod
     def clean_html(html):
@@ -226,10 +226,12 @@ def get_diff_dropid(file):
 
 
 if __name__ == '__main__':
-    dedupfile = '../../data/deduplication_17'
+    dedupfile = '../../data/deduplication_150'
     print(dedupfile)
-    dups_out_file = '../../data/dups.out_17_5'
-    dups_all_file = '../../data/dups.all_17_5'
-    drop_dups_file = '../../data/dropdups.all_17_5'
+    dups_out_file = '../../data/dups.out_150_5'
+    dups_all_file = '../../data/dups.all_150_5'
+    drop_dups_file = '../../data/dropdups.all_150_5'
     ad = ArticleDeduplication(dedupfile=dedupfile, dups_out_file=dups_out_file, dups_all_file=dups_all_file, drop_dups_file=drop_dups_file)
+    # ad.get_deduplication()
+    # ad.get_all_dups()
     ad.get_dropid_file()
