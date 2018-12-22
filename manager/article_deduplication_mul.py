@@ -8,7 +8,7 @@
 """
 
 import sys, os, time
-from multiprocessing import Process, Pool, Queue, Manager
+from multiprocessing import Process, Manager, Pool, Queue
 import json
 from utils.logger import Logger
 from setting import PROJECT_LOG_FILE
@@ -16,53 +16,17 @@ from setting import PROJECT_LOG_FILE
 from manager.similarity_check import InitDB
 from manager.similarity_check import Check
 
-from fingerprints_calculation.simhash import Simhash
-from similarity_calculation.hamming_distance import HammingDistance
 
 logger = Logger('simhash', log2console=False, log2file=True, logfile=PROJECT_LOG_FILE).get_logger()
 
-
-def initialize_shared(article_queue):
-    global queue
-    queue = article_queue
-pool= Pool(nb_process, initializer=initialize_shared, initargs(queue,))
-
-def get_task(self):
-
-
-
-
-def __work_with_redis(self):
-    """
-    进行simhash去重
-    :param task_queue: 任务队列
-    :param file: 输出文件
-    :return: 重复文章文件
-    """
-    init_db = InitDB(logger=logger)
-    i = 0
-    with open(self.dups_out_file, 'w', encoding='utf-8') as f:
-        while True:
-            i += 1
-            if i % 10000 == 0:
-                print('已处理{}条数据'.format(i))
-            if self.task_queue.qsize():
-                item = self.task_queue.get()
-                text_id, text = item
-                dups_list, _db = Check(text_id, text, init_db.siwr, logger=logger).check_similarity()
-                # print({text_id: dups_list})
-                f.write(json.dumps({text_id: dups_list}))
-                f.write('\n')
-            else:
-                print('队列没任务')
-                break
-    print('>>>>>>>>>>重复文章列表文件{}'.format(self.dups_out_file))
-
-
+# def initialize_shared(article_queue):
+#     global queue
+#     queue = article_queue
+# pool= Pool(nb_process, initializer=initialize_shared, initargs(queue,))
 
 
 # 生产
-class ProduceWorker():
+class TaskProduceWorker(Process):
     """
     读取需去重文章及id到队列中进行去重操作。
     :param dedupfile: 去重文章文件
@@ -72,50 +36,123 @@ class ProduceWorker():
 
     def __init__(self, dedupfile, article_queue):
         self.file = dedupfile
-        self.queue = article_queue
+        self._article_queue = article_queue
+        # self.article_queue = self.load_task()
+        super(). __init__()
 
-    print('Produce %d ...' % os.getpid())
-    f = open(self.file, 'r', encoding='utf-8')
-    while True:
-        line = f.readline().strip('\n')
-        dict = json.loads(line)
-        article_id = dict['article_id']
-        article = clean_html(dict['article'])
-        article_queue.put((article_id, article))
-    article_queue.put('Done')  # 用'Done'通知结束
+    def run(self):
+        worker_id = os.getpid()
+        print('Produce %d ...' % worker_id)
+        f = open(self.file, 'r', encoding='utf-8')
+        while True:
+            try:
+                line = f.readline().strip('\n')
+                dict = json.loads(line)
+                article_id = dict['article_id']
+                article = self.clean_html(dict['article'])
+                self._article_queue.put((article_id, article))
+                logger.info('任务队列长度 {}'.format(self._article_queue.qsize()))
+            except Exception as e:
+                self._article_queue.put(None)  # 用 None 通知结束
+                print('>>>>>>>>>>{}'.format(e))
+                print('>>>>>>>>>>无任务加载')
+                break
+        f.close()
+
+    @staticmethod
+    def clean_html(html):
+        """
+        清洗操作
+        :param html: 文章内容
+        :return: 清洗后string
+        """
+        return html.strip().replace("\n", "").replace("\t", "").replace("\r", "").replace("&amp;", "").replace("&#13;", "").replace("&nbsp;", "")
 
 
 # 消费
-def ConsumeWorker(article_queue):
-    worker_id = os.getpid()
-    print('Consume %d ...' % worker_id)
-    while True:
-        try:
-            _ = article_queue.get_nowait()
-        except article_queue.Empty:
+class TaskConsumeWorker(Process):
+    """
+    读取任务队列，计算重复文章，生成结果存入队列
+    :param article_queue: 存入article_id 和article 的任务队列
+    :param result_queue: 结果队列
+    """
+    def __init__(self, article_queue, result_queue):
+        self.article_queue = article_queue
+        self._result_queue = result_queue
+        super().__init__()
 
-            break
-    while True:
-        num = q.get()
-        if 0 == num:  # 收到结束信号
-            print('receive 0')
-            break
-        print('Consumer ' + str(num))
-        time.sleep(2)
-        print('Consumer end ' + str(num))
+    def run(self):
+        worker_id = os.getpid()
+        print('Consume %d ...' % worker_id)
+        init_db = InitDB(logger=logger)
+        i = 0
+        while True:
+            try:
+                item = self.article_queue.get()
+                if item:
+                    logger.info('待处理的任务队列长度{}'.format(self.article_queue.qsize()))
+                    text_id, text = item
+                    dups_list, _db = Check(text_id, text, init_db.siwr, logger=logger).check_similarity()
+                    # print({text_id: dups_list})
+                    self._result_queue.put({text_id: dups_list})
+                    logger.info('结果队列长度{}'.format(self._result_queue.qsize()))
+                    i += 1
+                    if i % 10 == 0:
+                        print('已处理{}条数据'.format(i))
+            except self.article_queue.Empty:
+                print('队列没任务')
+                break
+            finally:
+                self._result_queue.put(None)
+
+class TaskResultWorker(Process):
+
+    def __init__(self, result_queue, dups_out_file):
+        self._result_queue = result_queue
+        self._outfile = dups_out_file
+        super().__init__()
+
+    def run(self):
+        print('>>>>>>>>>>正在从结果队列获取结果写入文件到{}'.format(self._outfile))
+        f = open(self._outfile, 'w', encoding='utf-8')
+        while True:
+            try:
+                print(self._result_queue.qsize())
+                result = self._result_queue.get()
+                if result:
+                    print(result)
+                    line = json.dumps(result)
+                    f.write(line)
+                    f.write('\n')
+            except self._result_queue.Empty:
+                print('>>>>>>>>>>>结果队列为空')
+                break
+        f.close()
 
 
 if __name__ == '__main__':
     # article_queue = Queue(10)  # 可用
-    article_queue = Manager().Queue(10)  # 可用
-
+    article_queue = Manager().Queue(maxsize=20)  # 可用
+    result_queue = Manager().Queue()
     print(os.getpid())
+    file = '../../data/deduplication_test'
+    outfile = 'dedup_out_test'
 
-    producerProcess = Process(target=ProduceWorker, args=(article_queue,))  # 生产进程
-    consumerProcess = Process(target=ConsumeWorker, args=(article_queue,))  # 消费进程
+    producerProcess = TaskProduceWorker(file, article_queue)
+    consumerProcess = TaskConsumeWorker(article_queue, result_queue)
+    resultProcess = TaskResultWorker(result_queue, outfile)
+    # producerProcess = Process(target=TaskProduceWorker, args=(file, article_queue))  # 生产进程
+    # consumerProcess = Process(target=TaskConsumeWorker, args=(article_queue, result_queue))  # 消费进程
+    # resultProcess = Process(target=TaskResultWorker, args=(result_queue, outfile))  # 结果进程
+
+    consumerProcess.daemon = True
+    resultProcess.daemon = True
 
     producerProcess.start()
     consumerProcess.start()
+    time.sleep(5)
+    resultProcess.start()
 
+    resultProcess.join()
     producerProcess.join()
     consumerProcess.join()
