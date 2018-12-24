@@ -54,8 +54,8 @@ class TaskProduceWorker(Process):
                 logger.info('任务队列长度 {}'.format(self._article_queue.qsize()))
             except Exception as e:
                 self._article_queue.put(None)  # 用 None 通知结束
-                print('>>>>>>>>>>{}'.format(e))
-                print('>>>>>>>>>>无任务加载')
+                logger.warning('>>>>>>>>>>{}'.format(e))
+                logger.info('>>>>>>>>>>已完成任务加载')
                 break
         f.close()
 
@@ -89,21 +89,23 @@ class TaskConsumeWorker(Process):
         while True:
             try:
                 item = self.article_queue.get()
-                if item:
+                if item and self.article_queue.empty:
                     logger.info('待处理的任务队列长度{}'.format(self.article_queue.qsize()))
                     text_id, text = item
                     dups_list, _db = Check(text_id, text, init_db.siwr, logger=logger).check_similarity()
-                    # print({text_id: dups_list})
+                    # logger.info('重复文章的计算结果'.format({text_id: dups_list}))
                     self._result_queue.put({text_id: dups_list})
-                    logger.info('结果队列长度{}'.format(self._result_queue.qsize()))
+                    logger.info('已计算{}个结果到队列'.format(self._result_queue.qsize()))
                     i += 1
                     if i % 10 == 0:
                         print('已处理{}条数据'.format(i))
-            except self.article_queue.Empty:
-                print('队列没任务')
-                break
-            finally:
-                self._result_queue.put(None)
+                else:
+                    self._result_queue.put(None)
+                    logger.info('已将任务队列所有数据处理完成')
+                    break
+            except Exception as e:
+                logger.warning('{}'.format(e))
+                logger.info('队列没任务')
 
 class TaskResultWorker(Process):
 
@@ -113,21 +115,24 @@ class TaskResultWorker(Process):
         super().__init__()
 
     def run(self):
-        print('>>>>>>>>>>正在从结果队列获取结果写入文件到{}'.format(self._outfile))
+        logger.info('正在从结果队列获取结果写入文件到{}'.format(self._outfile))
         f = open(self._outfile, 'w', encoding='utf-8')
         while True:
             try:
-                print(self._result_queue.qsize())
+                logger.info('结果队列还剩{}个任务'.format(self._result_queue.qsize()))
                 result = self._result_queue.get()
-                if result:
-                    print(result)
+                if result and self._result_queue.empty:
+                    # print(result)
                     line = json.dumps(result)
                     f.write(line)
                     f.write('\n')
-            except self._result_queue.Empty:
-                print('>>>>>>>>>>>结果队列为空')
-                break
+                else:
+                    logger.info('已将结果队列中所有数据写入到文件')
+                    break
+            except Exception as e:
+                logger.warning('{}'.format(e))
         f.close()
+
 
 
 if __name__ == '__main__':
@@ -149,6 +154,7 @@ if __name__ == '__main__':
     resultProcess.daemon = True
 
     producerProcess.start()
+    time.sleep(5)
     consumerProcess.start()
     time.sleep(5)
     resultProcess.start()

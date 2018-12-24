@@ -42,6 +42,11 @@ class Logger(object):
         formatstr = '[%(asctime)s] [%(levelname)s] [%(filename)s-%(lineno)d] [PID:%(process)d-TID:%(thread)d] [%(message)s]'
         formatter = logging.Formatter(formatstr, "%Y-%m-%d %H:%M:%S")
 
+        # 解决重复日志
+        while self.logger.hasHandlers():
+            for i in self.logger.handlers:
+                self.logger.removeHandler(i)
+
         if log2console:
             # Create a handler for output to the console
             ch = logging.StreamHandler(sys.stderr)
